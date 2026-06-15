@@ -8,8 +8,8 @@
       "title": "Search Sector Alpha",
       "text": "A weak emergency beacon has been detected. Move toward the first signal source.",
       "target": {
-        "lat": 1.3001,
-        "lng": 103.8001,
+        "lat": 1.3385509108147515, 
+        "lng": 103.70566375842145,
         "radiusMeters": 20
       },
       "distanceEnabled": true,
