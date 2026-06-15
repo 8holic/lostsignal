@@ -1,0 +1,49 @@
+{
+  "code": "DEMO",
+  "title": "SignalCore Demo Mission",
+  "location": "Bishan-Ang Mo Kio Park",
+  "steps": [
+    {
+      "type": "location",
+      "title": "Search Sector Alpha",
+      "text": "A weak emergency beacon has been detected. Move toward the first signal source.",
+      "target": {
+        "lat": 1.3001,
+        "lng": 103.8001,
+        "radiusMeters": 20
+      },
+      "distanceEnabled": true,
+      "signalEnabled": true,
+      "locationEnabled": true,
+      "correctLore": "Sector Alpha confirmed. The signal is still active."
+    },
+    {
+      "type": "location",
+      "title": "Search Sector Bravo",
+      "text": "The signal has shifted. Continue tracking.",
+      "target": {
+        "lat": 1.3005,
+        "lng": 103.8005,
+        "radiusMeters": 20
+      },
+      "distanceEnabled": true,
+      "signalEnabled": true,
+      "locationEnabled": true,
+      "correctLore": "Sector Bravo confirmed. The beacon is getting stronger."
+    },
+    {
+      "type": "location",
+      "title": "Final Signal Lock",
+      "text": "Multiple readings are now available. Use all available telemetry to locate the source.",
+      "target": {
+        "lat": 1.301,
+        "lng": 103.801,
+        "radiusMeters": 15
+      },
+      "distanceEnabled": true,
+      "signalEnabled": true,
+      "locationEnabled": true,
+      "correctLore": "Final lock acquired. The missing hiker is nearby."
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SignalCore</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <section id="accessScreen" class="panel mission-panel">
+      <div class="panel-title">MISSION ACCESS</div>
+
+      <div class="row">
+        <label for="missionCode">ENTER CODE</label>
+        <input
+          id="missionCode"
+          type="text"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="ENTER CODE"
+        />
+      </div>
+
+      <div class="button-row">
+        <button id="loadMissionBtn">LOAD MISSION</button>
+      </div>
+
+      <div id="accessStatus" class="status">Awaiting code input.</div>
+    </section>
+
+    <section id="gameScreen" class="game-screen" style="display: none;">
+      <section class="panel lore-panel">
+        <div class="panel-title">MISSION FEED</div>
+        <div id="missionTitle" class="mission-title">NO MISSION LOADED</div>
+        <div id="missionText" class="mission-text">
+          Enter a mission code to begin.
+        </div>
+      </section>
+
+      <section class="panel hud-panel">
+        <div class="panel-title">FIELD HUD</div>
+        <div id="gameStatus" class="status">Mission ready.</div>
+
+        <div class="hud-stack">
+          <div class="hud-row">
+            <div class="hud-box">
+              <div class="hud-label">DISTANCE</div>
+              <div id="distanceValue" class="hud-value">-- m</div>
+            </div>
+            <button id="scanDistanceBtn" class="hud-action">SCAN</button>
+          </div>
+
+          <div class="hud-row">
+            <div class="hud-box">
+              <div class="hud-label">BEARINGS</div>
+              <div id="signalValue" class="hud-value">---</div>
+            </div>
+            <button id="scanSignalBtn" class="hud-action">SCAN BEARINGS</button>
+          </div>
+
+          <button id="checkLocationBtn" class="hud-action hud-action-full">
+            CHECK LOCATION
+          </button>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

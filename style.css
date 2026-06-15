@@ -1,0 +1,261 @@
+:root {
+  --bg: #071108;
+  --panel: #0e1a10;
+  --panel-2: #122015;
+  --line: #2d4d33;
+  --line-soft: #1f3424;
+  --text: #d8f7da;
+  --muted: #89b88d;
+  --accent: #66ff88;
+  --accent-dim: #2ccf64;
+  --danger: #ff6d6d;
+  --shadow: rgba(0, 0, 0, 0.45);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background:
+    linear-gradient(180deg, rgba(102, 255, 136, 0.04), transparent 24%),
+    radial-gradient(circle at top, rgba(102, 255, 136, 0.07), transparent 30%),
+    var(--bg);
+  color: var(--text);
+  font-family: "Courier New", Courier, monospace;
+}
+
+body {
+  padding: 16px;
+}
+
+.app-shell {
+  display: grid;
+  gap: 16px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.panel {
+  border: 2px solid var(--line);
+  background: linear-gradient(180deg, var(--panel), var(--panel-2));
+  box-shadow: 0 10px 24px var(--shadow);
+  padding: 16px;
+  border-radius: 4px;
+}
+
+.panel-title {
+  font-size: 0.85rem;
+  letter-spacing: 0.18em;
+  color: var(--accent);
+  margin-bottom: 14px;
+}
+
+.row {
+  display: grid;
+  gap: 8px;
+}
+
+label {
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+input {
+  width: 100%;
+  border: 2px solid var(--line);
+  background: #061006;
+  color: var(--text);
+  padding: 14px 12px;
+  font: inherit;
+  text-transform: uppercase;
+  outline: none;
+}
+
+input::placeholder {
+  color: rgba(216, 247, 218, 0.4);
+}
+
+input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(102, 255, 136, 0.12);
+}
+
+.button-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+button {
+  border: 2px solid var(--line);
+  background: #102114;
+  color: var(--text);
+  padding: 12px 14px;
+  font: inherit;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: var(--accent-dim);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+button.secondary {
+  color: var(--muted);
+  background: #0b1510;
+}
+
+.status {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-soft);
+  color: var(--muted);
+  min-height: 24px;
+}
+
+.game-screen {
+  display: grid;
+  gap: 16px;
+}
+
+.lore-panel {
+  height: 60vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.mission-title {
+  font-size: 1.1rem;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  margin-bottom: 10px;
+  flex: 0 0 auto;
+}
+
+.mission-text {
+  flex: 1 1 auto;
+  line-height: 1.6;
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow-y: auto;
+  padding-right: 6px;
+  scrollbar-width: thin;
+}
+
+.hud-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.hud-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.hud-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.hud-box {
+  border: 2px solid var(--line);
+  background: #08110a;
+  padding: 12px;
+  min-height: 84px;
+  display: grid;
+  align-content: space-between;
+}
+
+.hud-label {
+  font-size: 0.75rem;
+  letter-spacing: 0.18em;
+  color: var(--muted);
+}
+
+.hud-value {
+  font-size: clamp(1.4rem, 4vw, 2rem);
+  color: var(--accent);
+}
+
+.hud-action {
+  min-width: 88px;
+  display: grid;
+  place-items: center;
+  align-self: stretch;
+  padding: 12px 10px;
+  background: #102114;
+  border: 2px solid var(--line);
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.hud-action:hover {
+  border-color: var(--accent-dim);
+}
+
+.hidden {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  body {
+    padding: 12px;
+  }
+
+  .panel {
+    padding: 14px;
+  }
+
+  .lore-panel {
+    height: 60vh;
+  }
+
+  .hud-row {
+    grid-template-columns: minmax(0, 1fr) 84px;
+  }
+
+  .hud-box {
+    min-height: 78px;
+  }
+
+  .hud-action {
+    min-width: 84px;
+    padding: 10px 8px;
+  }
+}
+
+@media (max-width: 420px) {
+  .lore-panel {
+    height: 58vh;
+  }
+
+  .hud-row {
+    grid-template-columns: minmax(0, 1fr) 72px;
+    gap: 8px;
+  }
+
+  .hud-action {
+    min-width: 72px;
+    font-size: 0.78rem;
+  }
+}
+
+.hud-action-full {
+  width: 100%;
+  min-height: 48px;
+}
