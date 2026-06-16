@@ -1,28 +1,4 @@
-function getCurrentPosition() {
-  if (!navigator.geolocation) {
-    throw new Error("Geolocation is not supported on this device.");
-  }
-
-  return new Promise((resolve, reject) => {
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        resolve({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          accuracy: pos.coords.accuracy,
-        });
-      },
-      (err) => {
-        reject(new Error(err?.message || "Unable to get location."));
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
-      }
-    );
-  });
-}
+import { getAveragedPosition } from "./common.js";
 
 function normalizeHeading(value) {
   if (!Number.isFinite(value)) return null;
@@ -43,7 +19,36 @@ async function requestCompassPermissionIfNeeded() {
   }
 }
 
-async function getDeviceHeading() {
+function headingFromEvent(event) {
+  let heading = null;
+
+  if (Number.isFinite(event.webkitCompassHeading)) {
+    heading = event.webkitCompassHeading;
+  } else if (Number.isFinite(event.alpha)) {
+    heading = 360 - event.alpha;
+  }
+
+  return normalizeHeading(heading);
+}
+
+function averageCircularHeadings(headings) {
+  if (!headings.length) return null;
+
+  let x = 0;
+  let y = 0;
+
+  for (const heading of headings) {
+    const rad = (heading * Math.PI) / 180;
+    x += Math.cos(rad);
+    y += Math.sin(rad);
+  }
+
+  const avgRad = Math.atan2(y, x);
+
+  return normalizeHeading((avgRad * 180) / Math.PI);
+}
+
+async function getAveragedDeviceHeading(durationMs = 2500) {
   if (typeof window === "undefined") {
     throw new Error("Compass heading is not available here.");
   }
@@ -58,6 +63,7 @@ async function getDeviceHeading() {
   }
 
   return new Promise((resolve, reject) => {
+    const headings = [];
     let settled = false;
 
     const cleanup = () => {
@@ -85,24 +91,21 @@ async function getDeviceHeading() {
     };
 
     const onOrientation = (event) => {
-      let heading = null;
-
-      if (Number.isFinite(event.webkitCompassHeading)) {
-        heading = event.webkitCompassHeading;
-      } else if (Number.isFinite(event.alpha)) {
-        heading = 360 - event.alpha;
-      }
-
-      heading = normalizeHeading(heading);
-
+      const heading = headingFromEvent(event);
       if (heading === null) return;
-
-      finishResolve(heading);
+      headings.push(heading);
     };
 
     const timeoutId = window.setTimeout(() => {
-      finishReject(new Error("Unable to read compass heading."));
-    }, 4000);
+      const averagedHeading = averageCircularHeadings(headings);
+
+      if (averagedHeading === null) {
+        finishReject(new Error("Unable to read compass heading."));
+        return;
+      }
+
+      finishResolve(averagedHeading);
+    }, durationMs);
 
     window.addEventListener("deviceorientation", onOrientation, true);
     window.addEventListener("deviceorientationabsolute", onOrientation, true);
@@ -126,15 +129,37 @@ export function calculateBearing(lat1, lng1, lat2, lng2) {
   return (toDeg(Math.atan2(y, x)) + 360) % 360;
 }
 
-export function calculateSignalStrength(angleDifferenceDegrees) {
-  const diff = Math.min(Math.abs(angleDifferenceDegrees), 180);
+function signedAngleDifference(bearing, heading) {
+  return ((bearing - heading + 540) % 360) - 180;
+}
 
-  if (diff <= 15) return "█████";
-  if (diff <= 35) return "████░";
-  if (diff <= 60) return "███░░";
-  if (diff <= 100) return "██░░░";
-  if (diff <= 140) return "█░░░░";
-  return "░░░░░";
+export function calculateSignalStrength(bearing, heading) {
+  const diff = signedAngleDifference(bearing, heading);
+  const abs = Math.abs(diff);
+
+  // Target roughly behind player
+  if (abs > 150) {
+    return "░░░░░░░░░░";
+  }
+
+  const bars = Array(10).fill("░");
+
+  const maxStart = 7;
+  const centerStart = 4;
+
+  const normalized = diff / 150;
+
+  let start = Math.round(
+    centerStart + normalized * centerStart
+  );
+
+  start = Math.max(0, Math.min(maxStart, start));
+
+  bars[start] = "█";
+  bars[start + 1] = "█";
+  bars[start + 2] = "█";
+
+  return bars.join("");
 }
 
 export async function scanSignal(step) {
@@ -142,8 +167,10 @@ export async function scanSignal(step) {
     throw new Error("No target location is defined for this step.");
   }
 
-  const current = await getCurrentPosition();
-  const heading = await getDeviceHeading();
+  const [current, heading] = await Promise.all([
+    getAveragedPosition(5000, 400),
+    getAveragedDeviceHeading(2500),
+  ]);
 
   const bearing = calculateBearing(
     current.lat,
@@ -152,13 +179,9 @@ export async function scanSignal(step) {
     step.target.lng
   );
 
-  let diff = Math.abs(bearing - heading);
-  diff = Math.min(diff, 360 - diff);
-
   return {
     bearing,
     heading,
-    signal: calculateSignalStrength(diff),
-    current,
+    signal: calculateSignalStrength(bearing, heading),
   };
 }

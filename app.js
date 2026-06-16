@@ -3,12 +3,12 @@ import { scanSignal as runSignalScan } from "./js/signal.js";
 import {
   getCurrentStep,
   getStepFlag,
-  checkLocation as isCorrectLocation,
-  getCorrectLore,
-} from "./js/mission.js";
+  checkObjective as isCorrectObjective,
+} from "./js/objective.js";
 
 const missionCodeInput = document.getElementById("missionCode");
 const loadMissionBtn = document.getElementById("loadMissionBtn");
+const resumeMissionBtn = document.getElementById("resumeMissionBtn");
 
 const accessScreenEl = document.getElementById("accessScreen");
 const gameScreenEl = document.getElementById("gameScreen");
@@ -55,6 +55,12 @@ function showAccessScreen() {
 function showGameScreen() {
   if (accessScreenEl) accessScreenEl.style.display = "none";
   if (gameScreenEl) gameScreenEl.style.display = "";
+}
+
+function setResumeMissionVisible(visible) {
+  if (resumeMissionBtn) {
+    resumeMissionBtn.style.display = visible ? "" : "none";
+  }
 }
 
 function renderIdleHud() {
@@ -123,7 +129,9 @@ async function loadMissionByCode(code) {
   const mission = await res.json();
   if (!mission.code) mission.code = missionEntry.code;
   if (!mission.title) mission.title = missionEntry.title || "UNTITLED MISSION";
-  if (!mission.location && missionEntry.location) mission.location = missionEntry.location;
+  if (!mission.location && missionEntry.location) {
+    mission.location = missionEntry.location;
+  }
 
   return mission;
 }
@@ -177,12 +185,16 @@ function refreshHudButtons() {
 
   if (scanSignalBtn) {
     scanSignalBtn.disabled = !signalEnabled || signalScanInProgress;
-    scanSignalBtn.textContent = signalScanInProgress ? "SCANNING..." : "SCAN SIGNAL";
+    scanSignalBtn.textContent = signalScanInProgress
+      ? "SCANNING..."
+      : "SCAN SIGNAL";
   }
 
   if (checkLocationBtn) {
     checkLocationBtn.disabled = !locationEnabled || locationCheckInProgress;
-    checkLocationBtn.textContent = locationCheckInProgress ? "CHECKING..." : "CHECK LOCATION";
+    checkLocationBtn.textContent = locationCheckInProgress
+      ? "CHECKING..."
+      : "CHECK LOCATION";
   }
 }
 
@@ -210,7 +222,28 @@ function bootMission(mission, stepIndex = 0) {
   resetHudReadings();
   saveActiveMissionState();
   renderMission();
+  setResumeMissionVisible(false);
   showGameScreen();
+}
+
+function resumeMission() {
+  const saved = loadSavedMissionState();
+
+  if (!saved || !saved.mission) {
+    setStatus("No saved mission found.", "error", "access");
+    return;
+  }
+
+  activeMission = saved.mission;
+  activeStepIndex = Number.isInteger(saved.stepIndex) ? saved.stepIndex : 0;
+
+  renderMission();
+  renderIdleHud();
+  refreshHudButtons();
+  setResumeMissionVisible(false);
+  showGameScreen();
+
+  setStatus(`Resumed mission: ${activeMission.code}`, "normal", "game");
 }
 
 async function handleLoadMission() {
@@ -323,16 +356,11 @@ async function checkLocation() {
 
   try {
     const distanceResult = await runDistanceScan(step);
-    const isCorrect = isCorrectLocation(step, distanceResult.meters);
+    const isCorrect = isCorrectObjective(step, distanceResult.meters);
 
     if (isCorrect) {
-      if (checkLocationBtn) checkLocationBtn.textContent = "CORRECT LOCATION";
-      setStatus("Location confirmed.", "normal", "game");
-
-      const correctLore = getCorrectLore(step);
-      if (correctLore && missionTextEl) {
-        missionTextEl.textContent = correctLore;
-      }
+      if (checkLocationBtn) checkLocationBtn.textContent = "OBJECTIVE PASSED";
+      setStatus("Objective confirmed.", "normal", "game");
 
       if (step.advanceOnCorrect) {
         window.setTimeout(() => {
@@ -340,8 +368,8 @@ async function checkLocation() {
         }, 700);
       }
     } else {
-      if (checkLocationBtn) checkLocationBtn.textContent = "WRONG LOCATION";
-      setStatus("Wrong location.", "error", "game");
+      if (checkLocationBtn) checkLocationBtn.textContent = "OBJECTIVE FAILED";
+      setStatus("Objective not met.", "error", "game");
     }
   } catch (err) {
     console.error(err);
@@ -364,6 +392,7 @@ function handleResetToAccess() {
 
   clearSavedMission();
   resetHudReadings();
+  setResumeMissionVisible(false);
 
   if (missionTitleEl) missionTitleEl.textContent = "NO MISSION LOADED";
   if (missionTextEl) missionTextEl.textContent = "Enter a mission code to begin.";
@@ -376,6 +405,8 @@ function handleResetToAccess() {
 }
 
 loadMissionBtn?.addEventListener("click", handleLoadMission);
+resumeMissionBtn?.addEventListener("click", resumeMission);
+
 missionCodeInput?.addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
     handleLoadMission();
@@ -389,18 +420,15 @@ checkLocationBtn?.addEventListener("click", checkLocation);
 window.addEventListener("DOMContentLoaded", () => {
   const saved = loadSavedMissionState();
 
+  resetHudReadings();
+  refreshHudButtons();
+  showAccessScreen();
+
   if (saved && saved.mission) {
-    activeMission = saved.mission;
-    activeStepIndex = Number.isInteger(saved.stepIndex) ? saved.stepIndex : 0;
-    renderMission();
-    renderIdleHud();
-    refreshHudButtons();
-    showGameScreen();
-    setStatus(`Resumed mission: ${activeMission.code}`, "normal", "game");
+    setResumeMissionVisible(true);
+    setStatus(`Saved mission found: ${saved.mission.code}`, "normal", "access");
   } else {
-    resetHudReadings();
-    refreshHudButtons();
-    showAccessScreen();
+    setResumeMissionVisible(false);
     setStatus("Awaiting code input.", "normal", "access");
   }
 });
