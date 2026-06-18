@@ -4,30 +4,98 @@
   "location": "Test Area",
   "steps": [
     {
+      "step_id": "arrive_1",
       "objective": "arrive",
       "title": "Investigate Signal Source",
       "text": "Move to the reported signal source.",
       "target": {
-        "lat": 1.33973862947579, 
-        "lng": 103.70523922526404,
+        "lat": 1.343433420830554,
+        "lng": 103.69912864055253,
         "radiusMeters": 20
+      },
+      "transitions": {
+        "success": "evacuate_1"
       },
       "distanceEnabled": true,
       "signalEnabled": true,
       "locationEnabled": true
     },
     {
-      "objective": "disband",
+      "step_id": "evacuate_1",
+      "objective": "evacuate",
       "title": "Break Contact",
-      "text": "There is a radio jammer, Move at least 500 meters away from the source.",
+      "text": "Move at least 50 meters away from the source.",
       "target": {
-        "lat": 1.33973862947579,
-        "lng": 103.70523922526404,
-        "radiusMeters": 200
+        "lat": 1.343433420830554,
+        "lng": 103.69912864055253,
+        "radiusMeters": 50
+      },
+      "transitions": {
+        "success": "arrive_timed_1"
       },
       "distanceEnabled": true,
       "signalEnabled": true,
       "locationEnabled": true
+    },
+    {
+      "step_id": "arrive_timed_1",
+      "objective": "arrive_timed",
+      "title": "Reach the Safe Point in Time",
+      "text": "Reach the marked point before time runs out.",
+      "target": {
+        "lat": 1.343433420830554,
+        "lng": 103.69912864055253,
+        "radiusMeters": 20
+      },
+      "rules": {
+        "timeMs": 6000,
+        "onFailGoTo": "badending"
+      },
+      "transitions": {
+        "success": "evacuate_timed_1"
+      },
+      "distanceEnabled": true,
+      "signalEnabled": true,
+      "locationEnabled": true
+    },
+    {
+      "step_id": "evacuate_timed_1",
+      "objective": "evacuate_timed",
+      "title": "Escape Before the Deadline",
+      "text": "Leave the danger zone before time runs out.",
+      "target": {
+        "lat": 1.343433420830554,
+        "lng": 103.69912864055253,
+        "radiusMeters": 50
+      },
+      "rules": {
+        "timeMs": 6000,
+        "onFailGoTo": "badending"
+      },
+      "transitions": {
+        "success": "goodending"
+      },
+      "distanceEnabled": true,
+      "signalEnabled": true,
+      "locationEnabled": true
+    },
+    {
+      "step_id": "goodending",
+      "objective": "ending",
+      "title": "Successful Escape",
+      "text": "You made it through the mission.",
+      "distanceEnabled": false,
+      "signalEnabled": false,
+      "locationEnabled": false
+    },
+    {
+      "step_id": "badending",
+      "objective": "ending",
+      "title": "Mission Failed",
+      "text": "You ran out of time before completing the objective.",
+      "distanceEnabled": false,
+      "signalEnabled": false,
+      "locationEnabled": false
     }
   ]
 }
