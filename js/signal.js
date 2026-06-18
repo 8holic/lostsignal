@@ -142,7 +142,7 @@ export function calculateSignalStrength(bearing, heading) {
     return "░░░░░░░░░░";
   }
 
-  const bars = Array(10).fill("░");
+  const bars = Array(7).fill("░");
 
   const maxStart = 7;
   const centerStart = 4;
