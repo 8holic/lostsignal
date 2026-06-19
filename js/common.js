@@ -48,8 +48,8 @@ export function getCurrentPosition() {
 }
 
 export async function getAveragedPosition(
-  durationMs = 5000,
-  intervalMs = 400
+  durationMs = 10000,
+  intervalMs = 1000
 ) {
   const samples = [];
   const endTime = Date.now() + durationMs;

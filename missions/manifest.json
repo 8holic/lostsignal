@@ -5,6 +5,12 @@
       "title": "Wolf Drone Tracking",
       "location": "Jurong Central Park",
       "file": "mission-demo.json"
+    },
+    {
+      "code": "TEST",
+      "title": "TEST",
+      "location": "Jurong Central Park",
+      "file": "mission-demo.json"
     }
   ]
 }
