@@ -7,7 +7,7 @@
       "step_id": "arrive_1",
       "objective": "arrive",
       "title": "Meet Up",
-      "text": "Hello explorer, thanks for coming with us today. There are currently some sightings of a wolf, you see on your device there is a scan distance and bearings. Distance tells us how far away you are from the designated point while bearings tells you if you are facing the right direction. Firstly lets meet up, use that tool and meet us within 40 meter of that spot",
+      "text": "Hello TESTER, thanks for coming with us today. There are currently some sightings of a wolf, you see on your device there is a scan distance and bearings. Distance tells us how far away you are from the designated point while bearings tells you if you are facing the right direction. Firstly lets meet up, use that tool and meet us within 40 meter of that spot",
       "target": {
         "lat": 1.342775,
         "lng": 103.698800,

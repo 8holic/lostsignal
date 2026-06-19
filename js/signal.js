@@ -161,7 +161,7 @@ export async function scanSignal(step) {
   }
 
   const [current, heading] = await Promise.all([
-    getAveragedPosition(5000, 400),
+    getAveragedPosition(10000, 1000),
     getAveragedDeviceHeading(2500),
   ]);
 
