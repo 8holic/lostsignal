@@ -134,32 +134,25 @@ function signedAngleDifference(bearing, heading) {
 }
 
 export function calculateSignalStrength(bearing, heading) {
-  const diff = signedAngleDifference(bearing, heading);
-  const abs = Math.abs(diff);
+  const diff = Math.abs(signedAngleDifference(bearing, heading));
 
-  // Target roughly behind player
-  if (abs > 150) {
-    return "░░░░░░░░░░";
+  // Absolute difference → number of filled bars
+  let filled;
+  if (diff <= 20) {
+    filled = 5;               // 0–20°  → 5 bars
+  } else if (diff <= 40) {
+    filled = 4;               // 20–40° → 4 bars
+  } else if (diff <= 60) {
+    filled = 3;               // 40–60° → 3 bars
+  } else if (diff <= 80) {
+    filled = 2;               // 60–80° → 2 bars
+  } else if (diff <= 100) {
+    filled = 1;               // 80–100°→ 1 bar
+  } else {
+    filled = 0;               // >100°  → 0 bars
   }
 
-  const bars = Array(7).fill("░");
-
-  const maxStart = 7;
-  const centerStart = 4;
-
-  const normalized = diff / 150;
-
-  let start = Math.round(
-    centerStart + normalized * centerStart
-  );
-
-  start = Math.max(0, Math.min(maxStart, start));
-
-  bars[start] = "█";
-  bars[start + 1] = "█";
-  bars[start + 2] = "█";
-
-  return bars.join("");
+  return "█".repeat(filled) + "░".repeat(5 - filled);
 }
 
 export async function scanSignal(step) {

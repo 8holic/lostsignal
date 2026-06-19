@@ -1,16 +1,33 @@
 {
   "code": "DEMO",
-  "title": "SignalCore Demo Mission",
-  "location": "Test Area",
+  "title": "Wolf Drone Tracking",
+  "location": "Jurong Central Park",
   "steps": [
     {
       "step_id": "arrive_1",
       "objective": "arrive",
-      "title": "Investigate Signal Source",
-      "text": "Move to the reported signal source.",
+      "title": "Meet Up with Team",
+      "text": "Hello explorer, use the tool to navigate to the meetup point within 20 meters.",
       "target": {
-        "lat": 1.343433420830554,
-        "lng": 103.69912864055253,
+        "lat": 1.3390728999645192,
+        "lng": 103.7083257106275,
+        "radiusMeters": 20
+      },
+      "transitions": {
+        "success": "arrive_2"
+      },
+      "distanceEnabled": true,
+      "signalEnabled": true,
+      "locationEnabled": true
+    },
+    {
+      "step_id": "arrive_2",
+      "objective": "arrive",
+      "title": "Track the Wolf Scent",
+      "text": "The hunter's transmitter is active. Use only the bearing to find the wolf. Reach within 20 meters of the signal.",
+      "target": {
+        "lat": 1.3372441318645618,
+        "lng": 103.70799848161737,
         "radiusMeters": 20
       },
       "transitions": {
@@ -23,11 +40,11 @@
     {
       "step_id": "evacuate_1",
       "objective": "evacuate",
-      "title": "Break Contact",
-      "text": "Move at least 50 meters away from the source.",
+      "title": "Leave the Area",
+      "text": "Static interference! Move at least 50 meters away from the wolf's location to avoid jamming.",
       "target": {
-        "lat": 1.343433420830554,
-        "lng": 103.69912864055253,
+        "lat": 1.3372441318645618,
+        "lng": 103.70799848161737,
         "radiusMeters": 50
       },
       "transitions": {
@@ -40,16 +57,16 @@
     {
       "step_id": "arrive_timed_1",
       "objective": "arrive_timed",
-      "title": "Reach the Safe Point in Time",
-      "text": "Reach the marked point before time runs out.",
+      "title": "Activate EMP",
+      "text": "That's not a wolf! It's a drone. Hurry to the designated point within 20 meters and radio in to activate the EMP. Time limit: 8 minutes.",
       "target": {
-        "lat": 1.343433420830554,
-        "lng": 103.69912864055253,
+        "lat": 1.3385488997382826,
+        "lng": 103.70720678250225,
         "radiusMeters": 20
       },
       "rules": {
-        "timeMs": 6000,
-        "onFailGoTo": "badending"
+        "timeMs": 480000,
+        "onFailGoTo": "badending_arrive"
       },
       "transitions": {
         "success": "evacuate_timed_1"
@@ -61,16 +78,16 @@
     {
       "step_id": "evacuate_timed_1",
       "objective": "evacuate_timed",
-      "title": "Escape Before the Deadline",
-      "text": "Leave the danger zone before time runs out.",
+      "title": "Escape EMP Blast",
+      "text": "EMP activated! Get at least 50 meters away from the blast zone immediately! Time limit: 3 minutes.",
       "target": {
-        "lat": 1.343433420830554,
-        "lng": 103.69912864055253,
+        "lat": 1.3385488997382826,
+        "lng": 103.70720678250225,
         "radiusMeters": 50
       },
       "rules": {
-        "timeMs": 6000,
-        "onFailGoTo": "badending"
+        "timeMs": 180000,
+        "onFailGoTo": "badending_evacuate"
       },
       "transitions": {
         "success": "goodending"
@@ -82,17 +99,26 @@
     {
       "step_id": "goodending",
       "objective": "ending",
-      "title": "Successful Escape",
-      "text": "You made it through the mission.",
+      "title": "Mission Success",
+      "text": "Good job! We disabled the drone. It's only a matter of time before we find the owner.",
       "distanceEnabled": false,
       "signalEnabled": false,
       "locationEnabled": false
     },
     {
-      "step_id": "badending",
+      "step_id": "badending_arrive",
       "objective": "ending",
-      "title": "Mission Failed",
-      "text": "You ran out of time before completing the objective.",
+      "title": "Mission Failed - EMP Not Activated",
+      "text": "Dammit it escaped! We will just have to wait for it next time.",
+      "distanceEnabled": false,
+      "signalEnabled": false,
+      "locationEnabled": false
+    },
+    {
+      "step_id": "badending_evacuate",
+      "objective": "ending",
+      "title": "Mission Failed - Radio Knocked Out",
+      "text": "The radio was knocked out. Without it you are unable to contact the team...or capture the wolf.",
       "distanceEnabled": false,
       "signalEnabled": false,
       "locationEnabled": false

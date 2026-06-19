@@ -2,8 +2,8 @@
   "missions": [
     {
       "code": "DEMO",
-      "title": "SignalCore Demo Mission",
-      "location": "Bishan-Ang Mo Kio Park",
+      "title": "Wolf Drone Tracking",
+      "location": "Jurong Central Park",
       "file": "mission-demo.json"
     }
   ]

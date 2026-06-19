@@ -32,6 +32,7 @@ function getTimeLimitMs(step) {
   return Number.isFinite(value) && value > 0 ? value : null;
 }
 
+
 export function buildLoreText(mission, stepIndex) {
   if (!mission) {
     return "Enter a mission code to begin.";

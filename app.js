@@ -553,6 +553,29 @@ function getCurrentElapsedMs() {
   }
   return Math.max(0, Date.now() - activeStepStartedAt);
 }
+function updateStatusBar() {
+  const bar = document.getElementById('statusBar');
+  if (!bar) return;
+
+  const step = currentStep();
+  const limitMs = getStepTimeLimitMs(step);
+  const isTimed = isTimedStep(step);
+
+  if (!isTimed || limitMs === null) {
+    bar.style.display = 'none';
+    return;
+  }
+
+  const elapsed = getCurrentElapsedMs();
+  const remaining = Math.max(0, limitMs - elapsed);
+  const totalSec = Math.ceil(remaining / 1000);
+  const mins = Math.floor(totalSec / 60);
+  const secs = totalSec % 60;
+
+  bar.textContent = `Time remaining: ${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  bar.style.display = '';
+  bar.classList.toggle('timer-urgent', remaining <= 3000);
+}
 
 async function checkLocation() {
   const step = currentStep();
@@ -674,6 +697,7 @@ checkLocationBtn?.addEventListener("click", checkLocation);
 
 window.addEventListener("DOMContentLoaded", () => {
   const saved = loadSavedMissionState();
+  setInterval(updateStatusBar, 100);
 
   resetHudReadings();
   refreshHudButtons();
