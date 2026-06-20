@@ -11,7 +11,7 @@
       "target": {
         "lat": 1.3390728999645192,
         "lng": 103.7083257106275,
-        "radiusMeters": 20
+        "radiusMeters": 75
       },
       "transitions": {
         "success": "arrive_2"
@@ -24,18 +24,17 @@
       "step_id": "arrive_2",
       "objective": "arrive",
       "title": "Track the Scent",
-      "text": "Good, we will need you to track down the wolf scent, one of our hunters has placed a transmitter on it. Only bearings will work for this",
+      "text": "Good, we will need you to track down the wolf scent, one of our hunters has placed a transmitter on it. Bearings will not be available.",
       "target": {
         "lat": 1.3372441318645618,
         "lng": 103.70799848161737,
-        "radiusMeters": 20
+        "radiusMeters": 75
       },
       "transitions": {
         "success": "evacuate_1"
       },
-      "distanceEnabled": false,
-      "signalEnabled": true,
-      "locationEnabled": false
+      "distanceEnabled": true,
+      "signalEnabled": false
     },
     {
       "step_id": "evacuate_1",
@@ -45,14 +44,13 @@
       "target": {
         "lat": 1.3372441318645618,
         "lng": 103.70799848161737,
-        "radiusMeters": 50
+        "radiusMeters": 150
       },
       "transitions": {
         "success": "arrive_timed_1"
       },
       "distanceEnabled": true,
-      "signalEnabled": false,
-      "locationEnabled": true
+      "signalEnabled": false
     },
     {
       "step_id": "arrive_timed_1",
@@ -62,7 +60,7 @@
       "target": {
         "lat": 1.3385488997382826,
         "lng": 103.70720678250225,
-        "radiusMeters": 20
+        "radiusMeters": 75
       },
       "rules": {
         "timeMs": 480000,
@@ -72,8 +70,7 @@
         "success": "evacuate_timed_1"
       },
       "distanceEnabled": true,
-      "signalEnabled": true,
-      "locationEnabled": true
+      "signalEnabled": true
     },
     {
       "step_id": "evacuate_timed_1",
@@ -93,8 +90,7 @@
         "success": "goodending"
       },
       "distanceEnabled": true,
-      "signalEnabled": false,
-      "locationEnabled": true
+      "signalEnabled": false
     },
     {
       "step_id": "goodending",

@@ -17,8 +17,7 @@
         "success": "arrive_2"
       },
       "distanceEnabled": true,
-      "signalEnabled": true,
-      "locationEnabled": true
+      "signalEnabled": true
     },
     {
       "step_id": "arrive_2",
@@ -34,8 +33,7 @@
         "success": "evacuate_1"
       },
       "distanceEnabled": true,
-      "signalEnabled": true,
-      "locationEnabled": false
+      "signalEnabled": false
     },
     {
       "step_id": "evacuate_1",
@@ -51,8 +49,7 @@
         "success": "testing_completed"
       },
       "distanceEnabled": true,
-      "signalEnabled": false,
-      "locationEnabled": true
+      "signalEnabled": false
     },
     {
       "step_id": "testing_completed",
