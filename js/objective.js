@@ -26,12 +26,18 @@ function normalizeObjectiveName(value) {
     .toLowerCase();
 }
 
+function normalizeText(value) {
+  return String(value || "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, " ");
+}
+
 function getTimeLimitMs(step) {
   const raw = step?.rules?.timeMs ?? step?.timeMs;
   const value = Number(raw);
   return Number.isFinite(value) && value > 0 ? value : null;
 }
-
 
 export function buildLoreText(mission, stepIndex) {
   if (!mission) {
@@ -43,12 +49,12 @@ export function buildLoreText(mission, stepIndex) {
 
   if (step) {
     const stepTitle = step.title || `Step ${stepIndex + 1}`;
-    const stepText = step.text || step.instruction || "No step text provided.";
+    const stepText = step.text || step.instruction || "Mission feed unavailable.";
 
     return `${locationLine}${stepTitle}\n\n${stepText}`;
   }
 
-  return `${locationLine}${mission.intro || "No mission intro provided."}`;
+  return `${locationLine}${mission.intro || "Mission feed unavailable."}`;
 }
 
 export function evaluateObjective(step, context = {}) {
@@ -100,7 +106,6 @@ export function evaluateObjective(step, context = {}) {
       };
 
     case "evacuate":
-    case "disband":
     case "evacuate_timed":
       return {
         status: distanceMeters >= radius ? "succeed" : "not_met",
@@ -126,6 +131,36 @@ export function evaluateObjective(step, context = {}) {
 
 export function checkObjective(step, distanceMeters) {
   return evaluateObjective(step, { distanceMeters }).status === "succeed";
+}
+
+export function resolvePrompt(step, rawInput) {
+  const normalizedInput = normalizeText(rawInput);
+  if (!normalizedInput) {
+    return {
+      matched: false,
+      response: null,
+      normalizedInput,
+    };
+  }
+
+  const responses = Array.isArray(step?.responses) ? step.responses : [];
+  for (const response of responses) {
+    const responseInput = normalizeText(response?.input ?? response?.text ?? response?.match);
+    if (!responseInput) continue;
+    if (responseInput !== normalizedInput) continue;
+
+    return {
+      matched: true,
+      response,
+      normalizedInput,
+    };
+  }
+
+  return {
+    matched: false,
+    response: null,
+    normalizedInput,
+  };
 }
 
 export function advanceStep(state) {

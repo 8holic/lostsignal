@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LostSignal</title>
+  <title>Range Finder</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -18,7 +18,7 @@
           type="text"
           autocomplete="off"
           spellcheck="false"
-          placeholder="ENTER CODE"
+          placeholder="MISSION CODE"
         />
       </div>
 
@@ -43,8 +43,6 @@
         <div id="missionText" class="mission-text">
           Enter a mission code to begin.
         </div>
-        <section id="statusBar" class="panel status-bar" style="display:none;"></section>
-
       </section>
 
       <section class="panel hud-panel">
@@ -52,6 +50,19 @@
         <div id="gameStatus" class="status">Mission ready.</div>
 
         <div class="hud-stack">
+          <div id="scanTargetRow" class="scan-target-row">
+            <label for="scanTargetSelect">SCANNING FOR...</label>
+            <select id="scanTargetSelect">
+              <option value="objective">OBJECTIVE</option>
+              <option value="safeSpot">SAFE ZONE</option>
+            </select>
+          </div>
+
+          <div id="searchPointRow" class="scan-target-row hidden">
+            <label for="searchPointSelect">SEARCH POINT</label>
+            <select id="searchPointSelect"></select>
+          </div>
+
           <div class="hud-row">
             <div class="hud-box">
               <div class="hud-label">DISTANCE</div>
@@ -68,9 +79,31 @@
             <button id="scanSignalBtn" class="hud-action">SCAN BEARINGS</button>
           </div>
 
+          <div id="complicationRow" class="hud-row hud-row-single hidden">
+            <div class="hud-box">
+              <div class="hud-label">COMPLICATION</div>
+              <div id="complicationValue" class="hud-value complication-value">-----</div>
+            </div>
+          </div>
+
           <button id="checkLocationBtn" class="hud-action hud-action-full">
             CHECK LOCATION
           </button>
+
+          <div id="promptPanel" class="answer-panel hidden">
+            <label class="answer-label" for="promptInput">ENTER RESPONSE</label>
+            <input
+              id="promptInput"
+              class="answer-input"
+              type="text"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="RESPONSE CODE"
+            />
+            <button id="submitPromptBtn" class="hud-action hud-action-full">
+              SUBMIT
+            </button>
+          </div>
         </div>
       </section>
     </section>

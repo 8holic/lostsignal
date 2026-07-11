@@ -2,15 +2,15 @@
   "missions": [
     {
       "code": "DEMO",
-      "title": "Wolf Drone Tracking",
-      "location": "Jurong Central Park",
+      "title": "Range Finder Demo Mission",
+      "location": "Test Area",
       "file": "mission-demo.json"
     },
     {
-      "code": "TEST",
-      "title": "TEST",
-      "location": "Jurong Central Park",
-      "file": "mission-test.json"
+      "code": "JCP",
+      "title": "Joint Camp Precision Training",
+      "location": "Base Camp Training Area",
+      "file": "mission-jcp.json"
     }
   ]
 }

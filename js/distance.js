@@ -5,7 +5,7 @@ export async function scanDistance(step) {
     throw new Error("No target location is defined for this step.");
   }
 
-  const current = await getAveragedPosition(10000, 1000);
+  const current = await getAveragedPosition(5000, 400);
 
   const meters = calculateDistanceMeters(
     current.lat,

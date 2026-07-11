@@ -1,120 +1,165 @@
 {
   "code": "DEMO",
-  "title": "Wolf Drone Tracking",
-  "location": "Jurong Central Park",
+  "title": "Range Finder Demo Mission",
+  "location": "Test Area",
+  "complications": [
+    {
+      "complication": "safe_zone_penalty",
+      "complicationName": "Arcana Storm",
+      "intervalMs": 6000,
+      "safeZones": [
+        {
+          "lat": 1.4409950891778704,
+          "lng": 103.78318866758065,
+          "radiusMeters": 50
+        }
+      ],
+      "onSuccess": {
+        "message": "Safe zone confirmed."
+      },
+      "onFail": {
+        "message": "Arcana Storm caught you in the open. Time penalty applied.",
+        "timeModifierMs": 300000
+      }
+    }
+  ],
   "steps": [
     {
       "step_id": "arrive_1",
       "objective": "arrive",
-      "title": "Meet Up",
-      "text": "Hello explorer, thanks for coming with us today. There are currently some sightings of a wolf, you see on your device there is a scan distance and bearings. Distance tells us how far away you are from the designated point while bearings tells you if you are facing the right direction. Firstly lets meet up, use that tool and meet us within 20 meter of that spot",
+      "title": "Investigate Signal Source",
+      "text": "Move to the reported signal source.",
       "target": {
-        "lat": 1.3390728999645192,
-        "lng": 103.7083257106275,
-        "radiusMeters": 75
+        "lat": 1.4409950891778704,
+        "lng": 103.78318866758065,
+        "radiusMeters": 50
       },
       "transitions": {
-        "success": "arrive_2"
+        "success": "read_sign"
       },
       "distanceEnabled": true,
       "signalEnabled": true,
       "locationEnabled": true
     },
     {
-      "step_id": "arrive_2",
+      "step_id": "read_sign",
+      "objective": "prompt",
+      "title": "Read the Trail Sign",
+      "text": "Type the words written on the signboard.",
+      "responses": [
+        {
+          "input": "HINDHEDE TRAIL",
+          "goto": "route_hindhede"
+        },
+        {
+          "input": "SOUTH VIEW PATH",
+          "goto": "route_south_view"
+        },
+        {
+          "input": "CAVE PATH",
+          "goto": "route_cave"
+        },
+        {
+          "input": "H1",
+          "hint": "Look for the smallest sign near the path entrance."
+        }
+      ],
+      "distanceEnabled": true,
+      "signalEnabled": true,
+      "locationEnabled": false
+    },
+    {
+      "step_id": "route_hindhede",
       "objective": "arrive",
-      "title": "Track the Scent",
-      "text": "Good, we will need you to track down the wolf scent, one of our hunters has placed a transmitter on it. Bearings will not be available.",
+      "title": "Follow the Hindhede Route",
+      "text": "Head to the Hindhede target location.",
       "target": {
-        "lat": 1.3372441318645618,
-        "lng": 103.70799848161737,
-        "radiusMeters": 75
-      },
-      "transitions": {
-        "success": "evacuate_1"
-      },
-      "distanceEnabled": true,
-      "signalEnabled": false
-    },
-    {
-      "step_id": "evacuate_1",
-      "objective": "evacuate",
-      "title": "Break Contact",
-      "text": "....static, you hear a lot of static, is the radio being jammed? Leave the area and get 50 meter away",
-      "target": {
-        "lat": 1.3372441318645618,
-        "lng": 103.70799848161737,
-        "radiusMeters": 150
-      },
-      "transitions": {
-        "success": "arrive_timed_1"
-      },
-      "distanceEnabled": true,
-      "signalEnabled": false
-    },
-    {
-      "step_id": "arrive_timed_1",
-      "objective": "arrive_timed",
-      "title": "Activate EMP",
-      "text": "That is not a wolf! It is a drone controlled wolf. Someone is controlling it to spy on people. they must have seen us, I need you to activate our EMP. You can do so by radioing in within 20 meter at that destinated point Time limit: 8 minutes",
-      "target": {
-        "lat": 1.3385488997382826,
-        "lng": 103.70720678250225,
-        "radiusMeters": 75
-      },
-      "rules": {
-        "timeMs": 480000,
-        "onFailGoTo": "badending_arrive"
-      },
-      "transitions": {
-        "success": "evacuate_timed_1"
-      },
-      "distanceEnabled": true,
-      "signalEnabled": true
-    },
-    {
-      "step_id": "evacuate_timed_1",
-      "objective": "evacuate_timed",
-      "title": "Escape Blast",
-      "text": "Get away from the EMP Blast! Time limit:3 minute distance:50 meter away",
-      "target": {
-        "lat": 1.3385488997382826,
-        "lng": 103.70720678250225,
+        "lat": 1.4409950891778704,
+        "lng": 103.78318866758065,
         "radiusMeters": 50
       },
-      "rules": {
-        "timeMs": 180000,
-        "onFailGoTo": "badending_evacuate"
+      "transitions": {
+        "success": "treasure_hunt"
       },
+      "distanceEnabled": true,
+      "signalEnabled": true,
+      "locationEnabled": true
+    },
+    {
+      "step_id": "route_south_view",
+      "objective": "arrive",
+      "title": "Follow the South View Route",
+      "text": "Head to the South View target location.",
+      "target": {
+        "lat": 1.4409950891778704,
+        "lng": 103.78318866758065,
+        "radiusMeters": 50
+      },
+      "transitions": {
+        "success": "treasure_hunt"
+      },
+      "distanceEnabled": true,
+      "signalEnabled": true,
+      "locationEnabled": true
+    },
+    {
+      "step_id": "route_cave",
+      "objective": "arrive",
+      "title": "Follow the Cave Route",
+      "text": "Head to the Cave Path target location.",
+      "target": {
+        "lat": 1.4409950891778704,
+        "lng": 103.78318866758065,
+        "radiusMeters": 50
+      },
+      "transitions": {
+        "success": "treasure_hunt"
+      },
+      "distanceEnabled": true,
+      "signalEnabled": true,
+      "locationEnabled": true
+    },
+    {
+      "step_id": "treasure_hunt",
+      "objective": "search",
+      "title": "Recover Signal Fragments",
+      "text": "Claim any two signal fragments. Use the search point selector to choose which fragment to scan.",
+      "requiredClaims": 2,
+      "searchPoints": [
+        {
+          "id": "A",
+          "label": "POINT A",
+          "lat": 1.4409950891778704,
+          "lng": 103.78318866758065,
+          "radiusMeters": 50
+        },
+        {
+          "id": "B",
+          "label": "POINT B",
+          "lat": 1.4409950891778704,
+          "lng": 103.78318866758065,
+          "radiusMeters": 50
+        },
+        {
+          "id": "C",
+          "label": "POINT C",
+          "lat": 1.4409950891778704,
+          "lng": 103.78318866758065,
+          "radiusMeters": 50
+        }
+      ],
       "transitions": {
         "success": "goodending"
       },
       "distanceEnabled": true,
-      "signalEnabled": false
+      "signalEnabled": true,
+      "locationEnabled": true
     },
     {
       "step_id": "goodending",
       "objective": "ending",
-      "title": "Mission Success",
-      "text": "Good job! we disabled the drone, it is only a matter of time before we find the owner",
-      "distanceEnabled": false,
-      "signalEnabled": false,
-      "locationEnabled": false
-    },
-    {
-      "step_id": "badending_arrive",
-      "objective": "ending",
-      "title": "Failed – EMP Not Activated",
-      "text": "Dammit it escaped! We will just have to wait for it next time",
-      "distanceEnabled": false,
-      "signalEnabled": false,
-      "locationEnabled": false
-    },
-    {
-      "step_id": "badending_evacuate",
-      "objective": "ending",
-      "title": "Failed – Radio Knocked Out",
-      "text": "The radio was knocked out,without it you are unable to contact the team...or capture the wolf",
+      "title": "Mission Complete",
+      "text": "You followed the clue and reached the correct route.",
       "distanceEnabled": false,
       "signalEnabled": false,
       "locationEnabled": false

@@ -21,42 +21,131 @@ export function calculateDistanceMeters(lat1, lng1, lat2, lng2) {
   return Math.round(R * c);
 }
 
-export function getCurrentPosition() {
-  if (!navigator.geolocation) {
+function normalizePosition(pos) {
+  const lat = pos?.coords?.latitude;
+  const lng = pos?.coords?.longitude;
+
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return null;
+  }
+
+  return {
+    lat,
+    lng,
+    accuracy: Number.isFinite(pos.coords.accuracy)
+      ? pos.coords.accuracy
+      : Infinity,
+    timestamp: Number.isFinite(pos.timestamp) ? pos.timestamp : Date.now(),
+  };
+}
+
+function getGeolocationOptions(timeoutMs) {
+  return {
+    enableHighAccuracy: true,
+    timeout: timeoutMs,
+    maximumAge: 0,
+  };
+}
+
+export function getCurrentPosition(timeoutMs = 15000) {
+  if (typeof navigator === "undefined" || !navigator.geolocation) {
     throw new Error("Geolocation is not supported on this device.");
   }
 
   return new Promise((resolve, reject) => {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        resolve({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          accuracy: pos.coords.accuracy,
-        });
+        const position = normalizePosition(pos);
+
+        if (!position) {
+          reject(new Error("Unable to read a valid GPS position."));
+          return;
+        }
+
+        resolve(position);
       },
       (err) => {
         reject(new Error(err?.message || "Unable to get location."));
       },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
-      }
+      getGeolocationOptions(timeoutMs)
     );
   });
 }
 
-export async function getAveragedPosition(
-  durationMs = 10000,
-  intervalMs = 1000
-) {
+function collectWatchedPositions(durationMs, options = {}) {
+  if (typeof navigator === "undefined" || !navigator.geolocation) {
+    throw new Error("Geolocation is not supported on this device.");
+  }
+
+  const minSamples = options.minSamples ?? 3;
+  const minDurationMs = options.minDurationMs ?? 1500;
+  const desiredAccuracyMeters = options.desiredAccuracyMeters ?? 20;
+  const timeoutMs = Math.max(durationMs + 5000, 15000);
+
+  return new Promise((resolve, reject) => {
+    const samples = [];
+    let lastError = null;
+    let watchId = null;
+    let settled = false;
+    const startedAt = Date.now();
+
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
+
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+
+      if (samples.length) {
+        resolve(samples);
+      } else {
+        reject(lastError || new Error("Unable to obtain any GPS readings."));
+      }
+    };
+
+    const timeoutId = setTimeout(finish, durationMs);
+
+    try {
+      watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          const position = normalizePosition(pos);
+          if (!position) return;
+
+          samples.push(position);
+
+          if (
+            samples.length >= minSamples &&
+            Date.now() - startedAt >= minDurationMs &&
+            position.accuracy <= desiredAccuracyMeters
+          ) {
+            finish();
+          }
+        },
+        (err) => {
+          lastError = new Error(err?.message || "Unable to get location.");
+
+          if (err?.code === err?.PERMISSION_DENIED && !samples.length) {
+            finish();
+          }
+        },
+        getGeolocationOptions(timeoutMs)
+      );
+    } catch (err) {
+      clearTimeout(timeoutId);
+      reject(err);
+    }
+  });
+}
+
+async function collectPolledPositions(durationMs, intervalMs) {
   const samples = [];
   const endTime = Date.now() + durationMs;
 
   while (Date.now() < endTime) {
     try {
-      const position = await getCurrentPosition();
+      const position = await getCurrentPosition(Math.max(durationMs, 10000));
       samples.push(position);
     } catch (err) {
       console.warn("Location sample failed:", err);
@@ -71,15 +160,46 @@ export async function getAveragedPosition(
     throw new Error("Unable to obtain any GPS readings.");
   }
 
+  return samples;
+}
+
+function chooseBestPositionCluster(samples, maxUsableAccuracyMeters) {
+  const accurateSamples = samples.filter((sample) => {
+    return sample.accuracy <= maxUsableAccuracyMeters;
+  });
+
+  const candidates = accurateSamples.length ? accurateSamples : samples;
+  const anchor = candidates.reduce((best, sample) => {
+    return sample.accuracy < best.accuracy ? sample : best;
+  }, candidates[0]);
+
+  const cluster = candidates.filter((sample) => {
+    const distanceFromAnchor = calculateDistanceMeters(
+      sample.lat,
+      sample.lng,
+      anchor.lat,
+      anchor.lng
+    );
+    const toleratedDrift = Math.max(anchor.accuracy, sample.accuracy, 25) * 2;
+
+    return distanceFromAnchor <= toleratedDrift;
+  });
+
+  return cluster.length ? cluster : candidates;
+}
+
+function averagePositionSamples(samples) {
   let weightedLat = 0;
   let weightedLng = 0;
   let totalWeight = 0;
 
   for (const sample of samples) {
-    const accuracy = Math.max(sample.accuracy || 50, 1);
+    const accuracy = Number.isFinite(sample.accuracy)
+      ? Math.max(sample.accuracy, 1)
+      : 50;
 
-    // Better accuracy => larger weight
-    const weight = 1 / accuracy;
+    // Accuracy is a radius, so square it to reduce the pull of loose fixes.
+    const weight = 1 / accuracy ** 2;
 
     weightedLat += sample.lat * weight;
     weightedLng += sample.lng * weight;
@@ -94,4 +214,24 @@ export async function getAveragedPosition(
     sampleCount: samples.length,
     samples,
   };
+}
+
+export async function getAveragedPosition(
+  durationMs = 5000,
+  intervalMs = 400,
+  options = {}
+) {
+  const maxUsableAccuracyMeters = options.maxUsableAccuracyMeters ?? 100;
+  let samples;
+
+  try {
+    samples = await collectWatchedPositions(durationMs, options);
+  } catch (err) {
+    console.warn("Location watch failed, falling back to polling:", err);
+    samples = await collectPolledPositions(durationMs, intervalMs);
+  }
+
+  const cluster = chooseBestPositionCluster(samples, maxUsableAccuracyMeters);
+
+  return averagePositionSamples(cluster);
 }

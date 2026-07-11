@@ -1,0 +1,190 @@
+{
+  "code": "JCP",
+  "title": "Joint Camp Precision Training",
+  "location": "Base Camp Training Area",
+  "intro": "A controlled sniper-training exercise at base camp. Move carefully, confirm your positions, and respond to command injects under pressure.",
+  "complications": [
+    {
+      "complication": "safe_zone_penalty",
+      "complicationName": "Spot Check",
+      "intervalMs": 600000,
+      "safeZones": [
+        {
+          "lat": 1.3380666180001501,
+          "lng": 103.70767263084102,
+          "radiusMeters": 60
+        }
+      ],
+      "onCheck": {
+        "message": "Spot Check in progress. Confirming whether your team is inside base camp control."
+      },
+      "onSuccess": {
+        "message": "Spot Check clear. Base camp control confirmed."
+      },
+      "onFail": {
+        "message": "Spot Check caught the team outside control. Fifteen minute penalty applied.",
+        "timeModifierMs": 900000
+      }
+    }
+  ],
+  "steps": [
+    {
+      "step_id": "base_camp_checkin",
+      "objective": "arrive",
+      "title": "Report to Base Camp",
+      "text": "Training begins with a control check. Move to base camp and confirm your team is inside the safe zone before the exercise opens.",
+      "target": {
+        "lat": 1.3380666180001501,
+        "lng": 103.70767263084102,
+        "radiusMeters": 60
+      },
+      "transitions": {
+        "success": "range_marker_hunt"
+      },
+      "distanceEnabled": true,
+      "signalEnabled": true,
+      "locationEnabled": true
+    },
+    {
+      "step_id": "range_marker_hunt",
+      "objective": "search",
+      "title": "Recover Range Markers",
+      "text": "Four range markers have been placed around the training area. Claim any three to prove your team can move, observe, and report under field conditions.",
+      "requiredClaims": 3,
+      "searchPoints": [
+        {
+          "id": "M1",
+          "label": "MARKER 1",
+          "lat": 1.3385897780261784,
+          "lng": 103.7072046065405,
+          "radiusMeters": 60
+        },
+        {
+          "id": "M2",
+          "label": "MARKER 2",
+          "lat": 1.339445980922502,
+          "lng": 103.70837398104847,
+          "radiusMeters": 60
+        },
+        {
+          "id": "M3",
+          "label": "MARKER 3",
+          "lat": 1.336684789824356,
+          "lng": 103.70783221347683,
+          "radiusMeters": 60
+        },
+        {
+          "id": "M4",
+          "label": "MARKER 4",
+          "lat": 1.3371113015312215,
+          "lng": 103.70678294766923,
+          "radiusMeters": 60
+        }
+      ],
+      "transitions": {
+        "success": "overwatch_position"
+      },
+      "distanceEnabled": true,
+      "signalEnabled": true,
+      "locationEnabled": true
+    },
+    {
+      "step_id": "overwatch_position",
+      "objective": "arrive",
+      "title": "Establish Overwatch",
+      "text": "Move to the assigned overwatch position. This is the final observation point before command injects the live decision drill.",
+      "target": {
+        "lat": 1.3386171005968814,
+        "lng": 103.70724816507742,
+        "radiusMeters": 60
+      },
+      "transitions": {
+        "success": "decision_drill"
+      },
+      "distanceEnabled": true,
+      "signalEnabled": true,
+      "locationEnabled": true
+    },
+    {
+      "step_id": "decision_drill",
+      "objective": "prompt",
+      "title": "Command Decision Drill",
+      "text": "Command inject: your team has been exposed by an observer. Choose your response.\n\nType 1 to evacuate the area.\nType 2 to confront head on.",
+      "responses": [
+        {
+          "input": "1",
+          "goto": "evacuate_area"
+        },
+        {
+          "input": "2",
+          "goto": "confront_head_on"
+        }
+      ],
+      "distanceEnabled": false,
+      "signalEnabled": false,
+      "locationEnabled": false
+    },
+    {
+      "step_id": "evacuate_area",
+      "objective": "evacuate_timed",
+      "title": "Evacuate the Area",
+      "text": "Break contact and create distance from the overwatch position. Move at least 300 meters away within 5 minutes.",
+      "target": {
+        "lat": 1.3386171005968814,
+        "lng": 103.70724816507742,
+        "radiusMeters": 300
+      },
+      "rules": {
+        "timeMs": 300000,
+        "onFailGoTo": "bad_ending"
+      },
+      "transitions": {
+        "success": "good_ending",
+        "fail": "bad_ending"
+      },
+      "distanceEnabled": true,
+      "signalEnabled": false,
+      "locationEnabled": true
+    },
+    {
+      "step_id": "confront_head_on",
+      "objective": "arrive_timed",
+      "title": "Confront Head On",
+      "text": "Advance to the opposing observer's position and complete the head-on engagement drill within 10 minutes.",
+      "target": {
+        "lat": 1.339718473626013,
+        "lng": 103.70917063149574,
+        "radiusMeters": 60
+      },
+      "rules": {
+        "timeMs": 600000,
+        "onFailGoTo": "bad_ending"
+      },
+      "transitions": {
+        "success": "good_ending",
+        "fail": "bad_ending"
+      },
+      "distanceEnabled": true,
+      "signalEnabled": true,
+      "locationEnabled": true
+    },
+    {
+      "step_id": "good_ending",
+      "objective": "ending",
+      "title": "Training Passed",
+      "text": "Exercise complete. Your team made the call, completed the field requirement, and passed Joint Camp Precision Training.",
+      "distanceEnabled": false,
+      "signalEnabled": false,
+      "locationEnabled": false
+    },
+    {
+      "step_id": "bad_ending",
+      "objective": "ending",
+      "title": "Training Failed",
+      "text": "Exercise failed. Your team did not complete the required action in time and must run the training again.",
+      "distanceEnabled": false,
+      "signalEnabled": false,
+      "locationEnabled": false
+    }
+  ]
+}

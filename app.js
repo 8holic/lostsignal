@@ -1,6 +1,8 @@
 import { scanDistance as runDistanceScan } from "./js/distance.js";
 import { scanSignal as runSignalScan } from "./js/signal.js";
-import { evaluateObjective, getStepFlag } from "./js/objective.js";
+import { calculateDistanceMeters, getAveragedPosition } from "./js/common.js";
+import { createComplicationController } from "./js/complications.js";
+import { evaluateObjective, getStepFlag, resolvePrompt } from "./js/objective.js";
 
 const missionCodeInput = document.getElementById("missionCode");
 const loadMissionBtn = document.getElementById("loadMissionBtn");
@@ -17,10 +19,19 @@ const missionTextEl = document.getElementById("missionText");
 
 const distanceValueEl = document.getElementById("distanceValue");
 const signalValueEl = document.getElementById("signalValue");
+const complicationRowEl = document.getElementById("complicationRow");
+const complicationValueEl = document.getElementById("complicationValue");
 
+const scanTargetRow = document.getElementById("scanTargetRow");
+const scanTargetSelect = document.getElementById("scanTargetSelect");
+const searchPointRow = document.getElementById("searchPointRow");
+const searchPointSelect = document.getElementById("searchPointSelect");
 const scanDistanceBtn = document.getElementById("scanDistanceBtn");
 const scanSignalBtn = document.getElementById("scanSignalBtn");
 const checkLocationBtn = document.getElementById("checkLocationBtn");
+const promptPanelEl = document.getElementById("promptPanel");
+const promptInputEl = document.getElementById("promptInput");
+const submitPromptBtn = document.getElementById("submitPromptBtn");
 
 const STORAGE_KEY = "signalcore_active_mission";
 
@@ -31,11 +42,27 @@ let manifestCache = null;
 let activeMission = null;
 let activeStepIndex = 0;
 let activeStepStartedAt = 0;
+let activeMissionStartedAt = 0;
+let activeMissionEndedAt = 0;
+let activeTimeModifierMs = 0;
+let activeSearchState = {};
 
 let distanceScanInProgress = false;
 let signalScanInProgress = false;
 let locationCheckInProgress = false;
+let promptSubmitInProgress = false;
 let activeStepTimerId = null;
+const complications = createComplicationController({
+  rowEl: complicationRowEl,
+  valueEl: complicationValueEl,
+  getMission: () => activeMission,
+  getStep: currentStep,
+  isEndingStep,
+  setStatus,
+  applyTimeModifier,
+  formatSignedDuration,
+  saveState: saveActiveMissionState,
+});
 
 function setStatus(message, type = "normal", target = "game") {
   const el = target === "access" ? accessStatusEl : gameStatusEl;
@@ -72,11 +99,262 @@ function resetHudReadings() {
   renderIdleHud();
 }
 
+function getScanTargetMode() {
+  return scanTargetSelect?.value === "safeSpot" ? "safeSpot" : "objective";
+}
+
+function refreshScanTargetOptions() {
+  if (!scanTargetSelect) return;
+
+  const safeSpotOption = Array.from(scanTargetSelect.options).find((option) => {
+    return option.value === "safeSpot";
+  });
+
+  if (!safeSpotOption) return;
+
+  const hasSafeSpots = complications.getAllSafePoints().length > 0;
+  safeSpotOption.disabled = !hasSafeSpots;
+  safeSpotOption.hidden = !hasSafeSpots;
+
+  if (scanTargetRow) {
+    scanTargetRow.classList.toggle("hidden", !hasSafeSpots);
+  }
+
+  if (!hasSafeSpots && scanTargetSelect.value === "safeSpot") {
+    scanTargetSelect.value = "objective";
+  }
+}
+
+function getSearchPoints(step) {
+  return Array.isArray(step?.searchPoints) ? step.searchPoints : [];
+}
+
+function getSearchPointId(point, index) {
+  return String(point?.id ?? point?.label ?? `point_${index + 1}`).trim();
+}
+
+function getSearchPointLabel(point, index) {
+  return String(point?.label ?? point?.id ?? `POINT ${index + 1}`).trim();
+}
+
+function getSearchStepState(step) {
+  const stepId = String(step?.step_id || "").trim();
+  if (!stepId) return null;
+
+  if (!activeSearchState[stepId] || typeof activeSearchState[stepId] !== "object") {
+    activeSearchState[stepId] = {
+      claimedIds: [],
+    };
+  }
+
+  if (!Array.isArray(activeSearchState[stepId].claimedIds)) {
+    activeSearchState[stepId].claimedIds = [];
+  }
+
+  return activeSearchState[stepId];
+}
+
+function getClaimedSearchIds(step) {
+  const state = getSearchStepState(step);
+  return new Set((state?.claimedIds || []).map((id) => String(id)));
+}
+
+function getRequiredSearchClaims(step) {
+  const points = getSearchPoints(step);
+  const required = Math.floor(getFiniteNumber(step?.requiredClaims ?? step?.required, points.length));
+
+  if (!points.length) return 0;
+  return Math.max(1, Math.min(points.length, required));
+}
+
+function getClaimedSearchCount(step) {
+  const claimedIds = getClaimedSearchIds(step);
+  return getSearchPoints(step).filter((point, index) => {
+    return claimedIds.has(getSearchPointId(point, index));
+  }).length;
+}
+
+function isSearchComplete(step) {
+  return getClaimedSearchCount(step) >= getRequiredSearchClaims(step);
+}
+
+function getUnclaimedSearchPoints(step) {
+  const claimedIds = getClaimedSearchIds(step);
+
+  return getSearchPoints(step)
+    .map((point, index) => ({
+      point,
+      index,
+      id: getSearchPointId(point, index),
+      label: getSearchPointLabel(point, index),
+    }))
+    .filter((entry) => {
+      return entry.id && !claimedIds.has(entry.id);
+    });
+}
+
+function getSelectedSearchPoint(step = currentStep()) {
+  const unclaimed = getUnclaimedSearchPoints(step);
+  if (!unclaimed.length) return null;
+
+  const selectedId = String(searchPointSelect?.value || "");
+  return unclaimed.find((entry) => entry.id === selectedId) || unclaimed[0];
+}
+
+function refreshSearchPointOptions() {
+  if (!searchPointRow || !searchPointSelect) return;
+
+  const step = currentStep();
+  const visible =
+    isSearchStep(step) &&
+    getScanTargetMode() === "objective" &&
+    !isSearchComplete(step);
+  searchPointRow.classList.toggle("hidden", !visible);
+
+  if (!visible) {
+    searchPointSelect.innerHTML = "";
+    return;
+  }
+
+  const currentValue = searchPointSelect.value;
+  const unclaimed = getUnclaimedSearchPoints(step);
+  searchPointSelect.innerHTML = "";
+
+  for (const entry of unclaimed) {
+    const option = document.createElement("option");
+    option.value = entry.id;
+    option.textContent = entry.label;
+    searchPointSelect.appendChild(option);
+  }
+
+  if (unclaimed.some((entry) => entry.id === currentValue)) {
+    searchPointSelect.value = currentValue;
+  } else if (unclaimed[0]) {
+    searchPointSelect.value = unclaimed[0].id;
+  }
+}
+
+function getObjectiveScanTarget(step) {
+  if (isSearchStep(step)) {
+    const selected = getSelectedSearchPoint(step);
+    if (!selected) {
+      throw new Error("No unclaimed search points remain.");
+    }
+
+    return {
+      target: selected.point,
+      label: selected.label,
+    };
+  }
+
+  if (!step?.target) {
+    throw new Error("No target location is defined for this step.");
+  }
+
+  return {
+    target: step.target,
+    label: "objective",
+  };
+}
+
 function normalizeCode(value) {
   return String(value || "")
     .trim()
     .toUpperCase()
     .replace(/\s+/g, "");
+}
+
+function getValidTimestamp(value) {
+  const timestamp = Number(value);
+  return Number.isFinite(timestamp) && timestamp > 0 ? timestamp : null;
+}
+
+function getFiniteNumber(value, defaultValue = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : defaultValue;
+}
+
+function formatDuration(ms) {
+  const totalSeconds = Math.max(0, Math.floor(Number(ms) / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}h ${String(minutes).padStart(2, "0")}m ${String(seconds).padStart(2, "0")}s`;
+  }
+
+  if (minutes > 0) {
+    return `${minutes}m ${String(seconds).padStart(2, "0")}s`;
+  }
+
+  return `${seconds}s`;
+}
+
+function getMissionElapsedMs() {
+  if (!getValidTimestamp(activeMissionStartedAt)) {
+    return 0;
+  }
+
+  const endTime = getValidTimestamp(activeMissionEndedAt) || Date.now();
+  return Math.max(0, endTime - activeMissionStartedAt);
+}
+
+function getFinalMissionTimeMs() {
+  return Math.max(0, getMissionElapsedMs() + activeTimeModifierMs);
+}
+
+function formatSignedDuration(ms) {
+  const value = getFiniteNumber(ms);
+  const sign = value >= 0 ? "+" : "-";
+  return `${sign}${formatDuration(Math.abs(value))}`;
+}
+
+function getMissionTimeSummaryText() {
+  const elapsedText = `TIME TAKEN: ${formatDuration(getMissionElapsedMs())}`;
+
+  if (activeTimeModifierMs === 0) {
+    return elapsedText;
+  }
+
+  return [
+    elapsedText,
+    `TIME ADJUSTMENT: ${formatSignedDuration(activeTimeModifierMs)}`,
+    `FINAL TIME: ${formatDuration(getFinalMissionTimeMs())}`,
+  ].join("\n");
+}
+
+function getMissionStatusTimeText() {
+  if (activeTimeModifierMs === 0) {
+    return `TIME TAKEN: ${formatDuration(getMissionElapsedMs())}`;
+  }
+
+  return `FINAL TIME: ${formatDuration(getFinalMissionTimeMs())}`;
+}
+
+function applyTimeModifier(ms) {
+  const modifier = getFiniteNumber(ms);
+  if (modifier === 0) return 0;
+
+  activeTimeModifierMs += modifier;
+  saveActiveMissionState();
+  return modifier;
+}
+
+function initializeSearchState(savedSearchState = {}) {
+  activeSearchState = {};
+
+  for (const step of activeMission?.steps || []) {
+    if (!isSearchStep(step)) continue;
+
+    const state = getSearchStepState(step);
+    const savedClaimedIds = savedSearchState?.[step.step_id]?.claimedIds;
+    state.claimedIds = Array.isArray(savedClaimedIds)
+      ? savedClaimedIds.map((id) => String(id))
+      : [];
+  }
+
+  refreshSearchPointOptions();
 }
 
 async function sha256(text) {
@@ -91,12 +369,10 @@ function normalizeMission(mission) {
     throw new Error("Mission file is not in the expected format.");
   }
 
-  mission.steps = mission.steps.map((step, index) => {
-    return {
-      ...step,
-      step_id: String(step?.step_id || `step_${index + 1}`).trim(),
-    };
-  });
+  mission.steps = mission.steps.map((step, index) => ({
+    ...step,
+    step_id: String(step?.step_id || `step_${index + 1}`).trim(),
+  }));
 
   return mission;
 }
@@ -160,6 +436,11 @@ function saveActiveMissionState() {
       stepIndex: activeStepIndex,
       stepId: currentStep()?.step_id || null,
       stepStartedAt: activeStepStartedAt,
+      missionStartedAt: activeMissionStartedAt,
+      missionEndedAt: activeMissionEndedAt,
+      timeModifierMs: activeTimeModifierMs,
+      complicationState: complications.getState(),
+      searchState: activeSearchState,
     })
   );
 }
@@ -201,8 +482,32 @@ function isEndingStep(step) {
   return String(step?.objective || "").trim().toLowerCase() === "ending";
 }
 
+function markMissionEndedIfNeeded() {
+  if (getValidTimestamp(activeMissionEndedAt)) {
+    return;
+  }
+
+  activeMissionEndedAt = Date.now();
+  clearActiveStepTimer();
+  complications.stop();
+  complications.render();
+  saveActiveMissionState();
+}
+
 function isTimedStep(step) {
   return String(step?.objective || "").trim().toLowerCase().endsWith("_timed");
+}
+
+function isPromptStep(step) {
+  return String(step?.objective || "").trim().toLowerCase() === "prompt";
+}
+
+function isSearchStep(step) {
+  return String(step?.objective || "").trim().toLowerCase() === "search";
+}
+
+function hasPrompts(step) {
+  return isPromptStep(step) || (Array.isArray(step?.responses) && step.responses.length > 0);
 }
 
 function getStepTimeLimitMs(step) {
@@ -272,10 +577,15 @@ function activateCurrentStep({ preserveStartTime = false } = {}) {
 function refreshHudButtons() {
   const step = currentStep();
   const ending = isEndingStep(step);
+  const promptStep = hasPrompts(step);
+  const searchStep = isSearchStep(step);
 
   const distanceEnabled = ending ? false : getStepFlag(step, ["distanceEnabled"], true);
   const signalEnabled = ending ? false : getStepFlag(step, ["signalEnabled"], true);
-  const locationEnabled = ending ? false : getStepFlag(step, ["locationEnabled"], true);
+  const locationEnabled =
+    ending || promptStep || (searchStep && getScanTargetMode() === "safeSpot")
+      ? false
+      : getStepFlag(step, ["locationEnabled"], true);
 
   if (scanDistanceBtn) {
     scanDistanceBtn.disabled = !distanceEnabled || distanceScanInProgress;
@@ -289,7 +599,41 @@ function refreshHudButtons() {
 
   if (checkLocationBtn) {
     checkLocationBtn.disabled = !locationEnabled || locationCheckInProgress;
-    checkLocationBtn.textContent = locationCheckInProgress ? "CHECKING..." : "CHECK LOCATION";
+    checkLocationBtn.textContent = locationCheckInProgress
+      ? "CHECKING..."
+      : searchStep
+        ? "CLAIM LOCATION"
+        : "CHECK LOCATION";
+  }
+
+  if (submitPromptBtn) {
+    submitPromptBtn.disabled = !promptStep || promptSubmitInProgress;
+    submitPromptBtn.textContent = promptSubmitInProgress ? "SUBMITTING..." : "SUBMIT";
+  }
+
+  if (promptInputEl) {
+    promptInputEl.disabled = !promptStep || promptSubmitInProgress;
+  }
+}
+
+function refreshPrimaryAction() {
+  const step = currentStep();
+  const promptStep = hasPrompts(step);
+
+  if (promptPanelEl) {
+    promptPanelEl.classList.toggle("hidden", !promptStep);
+  }
+
+  if (checkLocationBtn) {
+    checkLocationBtn.classList.toggle("hidden", promptStep);
+  }
+
+  if (promptStep && promptInputEl && document.activeElement !== promptInputEl) {
+    window.setTimeout(() => {
+      if (hasPrompts(currentStep())) {
+        promptInputEl.focus();
+      }
+    }, 0);
   }
 }
 
@@ -297,23 +641,35 @@ function renderMission() {
   if (!activeMission || !missionTitleEl || !missionTextEl) return;
 
   const step = currentStep();
+  const ending = step && isEndingStep(step);
   missionTitleEl.textContent = activeMission.title || "UNTITLED MISSION";
 
   if (step) {
+    if (ending) {
+      markMissionEndedIfNeeded();
+    }
+
     const stepTitle = step.title || `Step ${activeStepIndex + 1}`;
-    const stepText = step.text || step.instruction || "No step text provided.";
-    missionTextEl.textContent = `${stepTitle}\n\n${stepText}`;
+    const stepText = step.text || step.instruction || "Mission feed unavailable.";
+    const searchText = isSearchStep(step)
+      ? `\n\nCLAIMED: ${getClaimedSearchCount(step)} / ${getRequiredSearchClaims(step)}`
+      : "";
+    const timeText = ending ? `\n\n${getMissionTimeSummaryText()}` : "";
+    missionTextEl.textContent = `${stepTitle}\n\n${stepText}${searchText}${timeText}`;
   } else {
-    missionTextEl.textContent = "No step text provided.";
+    missionTextEl.textContent = "No active mission step.";
   }
 
-  if (step && isEndingStep(step)) {
-    setStatus("Ending reached.", "normal", "game");
+  if (ending) {
+    setStatus(`Ending reached. ${getMissionStatusTimeText()}`, "normal", "game");
   } else {
     setStatus(`Mission loaded: ${activeMission.code}`, "normal", "game");
   }
 
+  refreshScanTargetOptions();
+  refreshSearchPointOptions();
   refreshHudButtons();
+  refreshPrimaryAction();
 }
 
 function resolveJumpTarget(target) {
@@ -347,6 +703,7 @@ function jumpMission(target, reason = "jump") {
 
   activeStepIndex = nextIndex;
   resetHudReadings();
+  if (promptInputEl) promptInputEl.value = "";
   renderMission();
   activateCurrentStep();
 
@@ -361,14 +718,22 @@ function advanceStep() {
 }
 
 function bootMission(mission, stepIndex = 0) {
+  const now = Date.now();
   activeMission = normalizeMission(mission);
   activeStepIndex = Number.isInteger(stepIndex) && stepIndex >= 0 ? stepIndex : 0;
-  activeStepStartedAt = Date.now();
+  activeStepStartedAt = now;
+  activeMissionStartedAt = now;
+  activeMissionEndedAt = 0;
+  activeTimeModifierMs = 0;
+  complications.initialize();
+  initializeSearchState();
   resetHudReadings();
+  if (promptInputEl) promptInputEl.value = "";
   renderMission();
   setResumeMissionVisible(false);
   showGameScreen();
   activateCurrentStep();
+  complications.start();
 }
 
 function resumeMission() {
@@ -396,20 +761,35 @@ function resumeMission() {
     activeStepIndex = 0;
   }
 
-  if (!Number.isFinite(saved.stepStartedAt) || saved.stepStartedAt <= 0) {
+  if (!getValidTimestamp(saved.stepStartedAt)) {
     activeStepStartedAt = Date.now();
   } else {
     activeStepStartedAt = saved.stepStartedAt;
   }
 
+  activeMissionStartedAt =
+    getValidTimestamp(saved.missionStartedAt) ||
+    getValidTimestamp(saved.stepStartedAt) ||
+    Date.now();
+  activeMissionEndedAt = getValidTimestamp(saved.missionEndedAt) || 0;
+  activeTimeModifierMs = getFiniteNumber(saved.timeModifierMs);
+  complications.initialize(saved.complicationState);
+  initializeSearchState(saved.searchState);
+
   renderMission();
   renderIdleHud();
   refreshHudButtons();
+  refreshPrimaryAction();
   setResumeMissionVisible(false);
   showGameScreen();
 
   activateCurrentStep({ preserveStartTime: true });
-  setStatus(`Resumed mission: ${activeMission.code}`, "normal", "game");
+  if (isEndingStep(currentStep())) {
+    setStatus(`Ending reached. ${getMissionStatusTimeText()}`, "normal", "game");
+  } else {
+    complications.start();
+    setStatus(`Resumed mission: ${activeMission.code}`, "normal", "game");
+  }
 }
 
 async function handleLoadMission() {
@@ -466,6 +846,7 @@ async function scanDistance() {
   if (!step) return;
 
   const stepId = step.step_id;
+  const scanTargetMode = getScanTargetMode();
   const ending = isEndingStep(step);
   const enabled = ending ? false : getStepFlag(step, ["distanceEnabled"], true);
   if (!enabled || distanceScanInProgress) return;
@@ -474,10 +855,34 @@ async function scanDistance() {
   refreshHudButtons();
 
   if (distanceValueEl) distanceValueEl.textContent = "SCANNING...";
-  setStatus("Distance scan running...", "normal", "game");
+  setStatus(
+    scanTargetMode === "safeSpot"
+      ? "Safe zone distance scan running..."
+      : "Distance scan running...",
+    "normal",
+    "game"
+  );
 
   try {
-    const result = await runDistanceScan(step);
+    let result;
+
+    if (scanTargetMode === "safeSpot") {
+      const current = await getAveragedPosition(5000, 400);
+      const nearest = complications.getNearestSafePoint(current);
+
+      if (!nearest) {
+        throw new Error("No complication safe zones are defined for this mission.");
+      }
+
+      result = {
+        meters: nearest.distanceMeters,
+        current,
+        safePoint: nearest.point,
+      };
+    } else {
+      const scanTarget = getObjectiveScanTarget(step);
+      result = await runDistanceScan({ target: scanTarget.target });
+    }
 
     if (!currentStep() || currentStep()?.step_id !== stepId) {
       return;
@@ -486,7 +891,13 @@ async function scanDistance() {
     lastDistanceReading = `${result.meters} m`;
 
     if (distanceValueEl) distanceValueEl.textContent = lastDistanceReading;
-    setStatus("Distance scan complete.", "normal", "game");
+    setStatus(
+      scanTargetMode === "safeSpot"
+        ? "Safe zone distance scan complete."
+        : "Distance scan complete.",
+      "normal",
+      "game"
+    );
   } catch (err) {
     console.error(err);
 
@@ -509,6 +920,7 @@ async function scanSignal() {
   if (!step) return;
 
   const stepId = step.step_id;
+  const scanTargetMode = getScanTargetMode();
   const ending = isEndingStep(step);
   const enabled = ending ? false : getStepFlag(step, ["signalEnabled"], true);
   if (!enabled || signalScanInProgress) return;
@@ -517,10 +929,31 @@ async function scanSignal() {
   refreshHudButtons();
 
   if (signalValueEl) signalValueEl.textContent = "SCANNING...";
-  setStatus("Signal scan running...", "normal", "game");
+  setStatus(
+    scanTargetMode === "safeSpot"
+      ? "Safe zone signal scan running..."
+      : "Signal scan running...",
+    "normal",
+    "game"
+  );
 
   try {
-    const result = await runSignalScan(step);
+    let target;
+
+    if (scanTargetMode === "safeSpot") {
+      const current = await getAveragedPosition(5000, 400);
+      const nearest = complications.getNearestSafePoint(current);
+
+      if (!nearest) {
+        throw new Error("No complication safe zones are defined for this mission.");
+      }
+
+      target = nearest.point;
+    } else {
+      target = getObjectiveScanTarget(step).target;
+    }
+
+    const result = await runSignalScan({ target });
 
     if (!currentStep() || currentStep()?.step_id !== stepId) {
       return;
@@ -529,7 +962,13 @@ async function scanSignal() {
     lastSignalReading = result.signal;
 
     if (signalValueEl) signalValueEl.textContent = lastSignalReading;
-    setStatus("Signal scan complete.", "normal", "game");
+    setStatus(
+      scanTargetMode === "safeSpot"
+        ? "Safe zone signal scan complete."
+        : "Signal scan complete.",
+      "normal",
+      "game"
+    );
   } catch (err) {
     console.error(err);
 
@@ -553,28 +992,89 @@ function getCurrentElapsedMs() {
   }
   return Math.max(0, Date.now() - activeStepStartedAt);
 }
-function updateStatusBar() {
-  const bar = document.getElementById('statusBar');
-  if (!bar) return;
 
-  const step = currentStep();
-  const limitMs = getStepTimeLimitMs(step);
-  const isTimed = isTimedStep(step);
+function addSearchClaim(step, searchPoint) {
+  const state = getSearchStepState(step);
+  if (!state || !searchPoint?.id) return false;
 
-  if (!isTimed || limitMs === null) {
-    bar.style.display = 'none';
+  if (state.claimedIds.includes(searchPoint.id)) {
+    return false;
+  }
+
+  state.claimedIds.push(searchPoint.id);
+  saveActiveMissionState();
+  return true;
+}
+
+async function checkSearchLocation(step, stepId) {
+  if (isSearchComplete(step)) {
+    const successTarget = getSuccessTarget(step);
+    if (successTarget) {
+      jumpMission(successTarget, "success");
+    } else {
+      advanceStep();
+    }
     return;
   }
 
-  const elapsed = getCurrentElapsedMs();
-  const remaining = Math.max(0, limitMs - elapsed);
-  const totalSec = Math.ceil(remaining / 1000);
-  const mins = Math.floor(totalSec / 60);
-  const secs = totalSec % 60;
+  const selected = getSelectedSearchPoint(step);
+  if (!selected) {
+    setStatus("No unclaimed search points remain.", "normal", "game");
+    return;
+  }
 
-  bar.textContent = `Time remaining: ${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-  bar.style.display = '';
-  bar.classList.toggle('timer-urgent', remaining <= 3000);
+  const current = await getAveragedPosition(5000, 400);
+
+  if (!currentStep() || currentStep()?.step_id !== stepId) {
+    return;
+  }
+
+  const lat = Number(selected.point?.lat);
+  const lng = Number(selected.point?.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    throw new Error("Selected search point is missing coordinates.");
+  }
+
+  const radius = Math.max(0, getFiniteNumber(selected.point?.radiusMeters, 20));
+  const distanceMeters = calculateDistanceMeters(current.lat, current.lng, lat, lng);
+  lastDistanceReading = `${distanceMeters} m`;
+  if (distanceValueEl) distanceValueEl.textContent = lastDistanceReading;
+
+  if (distanceMeters > radius) {
+    if (checkLocationBtn) checkLocationBtn.textContent = "CLAIM NOT MET";
+    setStatus(`${selected.label} not reached.`, "normal", "game");
+    return;
+  }
+
+  addSearchClaim(step, selected);
+  resetHudReadings();
+  refreshSearchPointOptions();
+
+  const claimed = getClaimedSearchCount(step);
+  const required = getRequiredSearchClaims(step);
+
+  if (isSearchComplete(step)) {
+    renderMission();
+    if (checkLocationBtn) checkLocationBtn.textContent = "SEARCH COMPLETE";
+    setStatus("Search objective complete.", "normal", "game");
+
+    const successTarget = getSuccessTarget(step);
+    if (successTarget) {
+      window.setTimeout(() => {
+        jumpMission(successTarget, "success");
+      }, 700);
+    } else if (activeMission && activeStepIndex < activeMission.steps.length - 1) {
+      window.setTimeout(() => {
+        advanceStep();
+      }, 700);
+    }
+
+    return;
+  }
+
+  renderMission();
+  if (checkLocationBtn) checkLocationBtn.textContent = "POINT CLAIMED";
+  setStatus(`${selected.label} claimed. ${claimed}/${required} complete.`, "normal", "game");
 }
 
 async function checkLocation() {
@@ -585,7 +1085,12 @@ async function checkLocation() {
   const objective = String(step.objective || "").trim().toLowerCase();
 
   if (objective === "ending") {
-    setStatus("This step is lore only.", "normal", "game");
+    setStatus("This step does not require a location check.", "normal", "game");
+    return;
+  }
+
+  if (hasPrompts(step)) {
+    setStatus("This step uses the prompt response box.", "normal", "game");
     return;
   }
 
@@ -596,9 +1101,14 @@ async function checkLocation() {
   refreshHudButtons();
 
   if (checkLocationBtn) checkLocationBtn.textContent = "CHECKING...";
-  setStatus("Checking location...", "normal", "game");
+  setStatus(isSearchStep(step) ? "Checking search point..." : "Checking location...", "normal", "game");
 
   try {
+    if (isSearchStep(step)) {
+      await checkSearchLocation(step, stepId);
+      return;
+    }
+
     const distanceResult = await runDistanceScan(step);
 
     if (!currentStep() || currentStep()?.step_id !== stepId) {
@@ -658,24 +1168,124 @@ async function checkLocation() {
   }
 }
 
+function getPromptAction(response) {
+  if (!response || typeof response !== "object") {
+    return null;
+  }
+
+  const action = response.action && typeof response.action === "object" ? response.action : response;
+
+  return {
+    hint: action.hint ?? action.message ?? response.hint ?? response.message ?? null,
+    goto: action.goto ?? action.stepId ?? action.stepIndex ?? action.next ?? response.goto ?? response.stepId ?? response.stepIndex ?? response.next ?? null,
+    mission: action.mission ?? action.missionCode ?? response.mission ?? response.missionCode ?? null,
+    timeModifierMs: action.timeModifierMs ?? response.timeModifierMs ?? 0,
+  };
+}
+
+function applyPromptResponse(response) {
+  const action = getPromptAction(response);
+  if (!action) return;
+
+  if (action.hint) {
+    setStatus(action.hint, "normal", "game");
+  }
+
+  const appliedModifier = applyTimeModifier(action.timeModifierMs);
+  if (appliedModifier !== 0 && !action.hint) {
+    setStatus(`Time adjustment applied: ${formatSignedDuration(appliedModifier)}`, "normal", "game");
+  }
+
+  if (action.mission) {
+    window.setTimeout(async () => {
+      try {
+        const mission = await loadMissionByCode(action.mission);
+        bootMission(mission, 0);
+      } catch (err) {
+        console.error(err);
+        setStatus(err?.message || "Mission switch failed.", "error", "game");
+      }
+    }, 500);
+    return;
+  }
+
+  if (action.goto !== null && typeof action.goto !== "undefined") {
+    window.setTimeout(() => {
+      jumpMission(action.goto, "prompt");
+    }, 500);
+  }
+}
+
+async function submitPrompt() {
+  const step = currentStep();
+  if (!step) return;
+  if (!hasPrompts(step) || promptSubmitInProgress) return;
+
+  const rawInput = String(promptInputEl?.value || "");
+  if (!rawInput.trim()) {
+    setStatus("Enter a response first.", "error", "game");
+    if (promptInputEl) promptInputEl.focus();
+    return;
+  }
+
+  promptSubmitInProgress = true;
+  refreshHudButtons();
+  setStatus("Checking response...", "normal", "game");
+
+  try {
+    const result = resolvePrompt(step, rawInput);
+
+    if (!currentStep() || currentStep()?.step_id !== step.step_id) {
+      return;
+    }
+
+    if (result.matched) {
+      setStatus("Response matched.", "normal", "game");
+      applyPromptResponse(result.response);
+      if (promptInputEl) promptInputEl.value = "";
+    } else {
+      setStatus("No response matched.", "error", "game");
+      if (promptInputEl) promptInputEl.focus();
+    }
+  } catch (err) {
+    console.error(err);
+    setStatus(err?.message || "Prompt check failed.", "error", "game");
+  } finally {
+    promptSubmitInProgress = false;
+    refreshHudButtons();
+  }
+}
+
 function handleResetToAccess() {
   clearActiveStepTimer();
+  complications.stop();
 
   activeMission = null;
   activeStepIndex = 0;
   activeStepStartedAt = 0;
+  activeMissionStartedAt = 0;
+  activeMissionEndedAt = 0;
+  activeTimeModifierMs = 0;
+  complications.reset();
+  activeSearchState = {};
   distanceScanInProgress = false;
   signalScanInProgress = false;
   locationCheckInProgress = false;
+  promptSubmitInProgress = false;
 
   clearSavedMission();
   resetHudReadings();
+  complications.render();
+  refreshScanTargetOptions();
+  refreshSearchPointOptions();
+  if (promptInputEl) promptInputEl.value = "";
   setResumeMissionVisible(false);
 
   if (missionTitleEl) missionTitleEl.textContent = "NO MISSION LOADED";
   if (missionTextEl) missionTextEl.textContent = "Enter a mission code to begin.";
 
   refreshHudButtons();
+  refreshPrimaryAction();
   showAccessScreen();
   setStatus("Awaiting code input.", "normal", "access");
 
@@ -694,13 +1304,36 @@ missionCodeInput?.addEventListener("keydown", (event) => {
 scanDistanceBtn?.addEventListener("click", scanDistance);
 scanSignalBtn?.addEventListener("click", scanSignal);
 checkLocationBtn?.addEventListener("click", checkLocation);
+submitPromptBtn?.addEventListener("click", submitPrompt);
+
+scanTargetSelect?.addEventListener("change", () => {
+  resetHudReadings();
+  refreshSearchPointOptions();
+  refreshHudButtons();
+  const label = getScanTargetMode() === "safeSpot" ? "safe zone" : "objective";
+  setStatus(`Scanning for ${label}.`, "normal", "game");
+});
+
+searchPointSelect?.addEventListener("change", () => {
+  resetHudReadings();
+  const selectedLabel =
+    searchPointSelect.selectedOptions?.[0]?.textContent || searchPointSelect.value;
+  setStatus(`Search point selected: ${selectedLabel}`, "normal", "game");
+});
+
+promptInputEl?.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    submitPrompt();
+  }
+});
 
 window.addEventListener("DOMContentLoaded", () => {
   const saved = loadSavedMissionState();
-  setInterval(updateStatusBar, 100);
 
   resetHudReadings();
+  refreshScanTargetOptions();
   refreshHudButtons();
+  refreshPrimaryAction();
   showAccessScreen();
 
   if (saved && saved.mission) {

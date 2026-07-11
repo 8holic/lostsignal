@@ -38,14 +38,14 @@ function averageCircularHeadings(headings) {
   let y = 0;
 
   for (const heading of headings) {
-    const rad = (heading * Math.PI) / 180;
-    x += Math.cos(rad);
-    y += Math.sin(rad);
+    const radians = (heading * Math.PI) / 180;
+    x += Math.cos(radians);
+    y += Math.sin(radians);
   }
 
-  const avgRad = Math.atan2(y, x);
+  const averageRadians = Math.atan2(y, x);
 
-  return normalizeHeading((avgRad * 180) / Math.PI);
+  return normalizeHeading((averageRadians * 180) / Math.PI);
 }
 
 async function getAveragedDeviceHeading(durationMs = 2500) {
@@ -116,15 +116,15 @@ export function calculateBearing(lat1, lng1, lat2, lng2) {
   const toRad = (deg) => (deg * Math.PI) / 180;
   const toDeg = (rad) => (rad * 180) / Math.PI;
 
-  const φ1 = toRad(lat1);
-  const φ2 = toRad(lat2);
-  const λ1 = toRad(lng1);
-  const λ2 = toRad(lng2);
+  const lat1Rad = toRad(lat1);
+  const lat2Rad = toRad(lat2);
+  const lng1Rad = toRad(lng1);
+  const lng2Rad = toRad(lng2);
 
-  const y = Math.sin(λ2 - λ1) * Math.cos(φ2);
+  const y = Math.sin(lng2Rad - lng1Rad) * Math.cos(lat2Rad);
   const x =
-    Math.cos(φ1) * Math.sin(φ2) -
-    Math.sin(φ1) * Math.cos(φ2) * Math.cos(λ2 - λ1);
+    Math.cos(lat1Rad) * Math.sin(lat2Rad) -
+    Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(lng2Rad - lng1Rad);
 
   return (toDeg(Math.atan2(y, x)) + 360) % 360;
 }
@@ -134,25 +134,26 @@ function signedAngleDifference(bearing, heading) {
 }
 
 export function calculateSignalStrength(bearing, heading) {
-  const diff = Math.abs(signedAngleDifference(bearing, heading));
+  const diff = signedAngleDifference(bearing, heading);
+  const abs = Math.abs(diff);
 
-  // Absolute difference → number of filled bars
-  let filled;
-  if (diff <= 20) {
-    filled = 5;               // 0–20°  → 5 bars
-  } else if (diff <= 40) {
-    filled = 4;               // 20–40° → 4 bars
-  } else if (diff <= 60) {
-    filled = 3;               // 40–60° → 3 bars
-  } else if (diff <= 80) {
-    filled = 2;               // 60–80° → 2 bars
-  } else if (diff <= 100) {
-    filled = 1;               // 80–100°→ 1 bar
-  } else {
-    filled = 0;               // >100°  → 0 bars
+  if (abs > 150) {
+    return "----------";
   }
 
-  return "█".repeat(filled) + "░".repeat(5 - filled);
+  const bars = Array(10).fill("-");
+  const maxStart = 7;
+  const centerStart = 4;
+  const normalized = diff / 150;
+
+  let start = Math.round(centerStart + normalized * centerStart);
+  start = Math.max(0, Math.min(maxStart, start));
+
+  bars[start] = "#";
+  bars[start + 1] = "#";
+  bars[start + 2] = "#";
+
+  return bars.join("");
 }
 
 export async function scanSignal(step) {
@@ -161,7 +162,7 @@ export async function scanSignal(step) {
   }
 
   const [current, heading] = await Promise.all([
-    getAveragedPosition(10000, 1000),
+    getAveragedPosition(5000, 400),
     getAveragedDeviceHeading(2500),
   ]);
 

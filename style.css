@@ -65,7 +65,8 @@ label {
   color: var(--muted);
 }
 
-input {
+input,
+select {
   width: 100%;
   border: 2px solid var(--line);
   background: #061006;
@@ -76,11 +77,16 @@ input {
   outline: none;
 }
 
+select {
+  cursor: pointer;
+}
+
 input::placeholder {
   color: rgba(216, 247, 218, 0.4);
 }
 
-input:focus {
+input:focus,
+select:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px rgba(102, 255, 136, 0.12);
 }
@@ -164,11 +170,20 @@ button.secondary {
   gap: 12px;
 }
 
+.scan-target-row {
+  display: grid;
+  gap: 8px;
+}
+
 .hud-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   align-items: stretch;
+}
+
+.hud-row-single {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .hud-box {
@@ -180,7 +195,8 @@ button.secondary {
   align-content: space-between;
 }
 
-.hud-label {
+.hud-label,
+.answer-label {
   font-size: 0.75rem;
   letter-spacing: 0.18em;
   color: var(--muted);
@@ -189,6 +205,12 @@ button.secondary {
 .hud-value {
   font-size: clamp(1.4rem, 4vw, 2rem);
   color: var(--accent);
+}
+
+.complication-value {
+  font-size: clamp(1rem, 3vw, 1.35rem);
+  letter-spacing: 0.08em;
+  overflow-wrap: anywhere;
 }
 
 .hud-action {
@@ -208,8 +230,18 @@ button.secondary {
   border-color: var(--accent-dim);
 }
 
+.hud-action-full {
+  width: 100%;
+  min-height: 48px;
+}
+
+.answer-panel {
+  display: grid;
+  gap: 10px;
+}
+
 .hidden {
-  display: none;
+  display: none !important;
 }
 
 @media (max-width: 720px) {
@@ -253,9 +285,4 @@ button.secondary {
     min-width: 72px;
     font-size: 0.78rem;
   }
-}
-
-.hud-action-full {
-  width: 100%;
-  min-height: 48px;
 }
