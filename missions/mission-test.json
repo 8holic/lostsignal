@@ -1,61 +1,150 @@
 {
   "code": "TEST",
-  "title": "TEST",
-  "location": "Jurong Central Park",
+  "title": "Text Interaction Test Mission",
+  "location": "No GPS Required",
+  "intro": "A text-only test mission for prompt, branch, hint, back, and multi-answer behavior.",
   "steps": [
     {
-      "step_id": "arrive_1",
-      "objective": "arrive",
-      "title": "Meet Up",
-      "text": "Hello TESTER, thanks for coming with us today. There are currently some sightings of a wolf, you see on your device there is a scan distance and bearings. Distance tells us how far away you are from the designated point while bearings tells you if you are facing the right direction. Firstly lets meet up, use that tool and meet us within 40 meter of that spot",
-      "target": {
-        "lat": 1.342775,
-        "lng": 103.698800,
-        "radiusMeters": 40
-      },
-      "transitions": {
-        "success": "arrive_2"
-      },
-      "distanceEnabled": true,
-      "signalEnabled": true
+      "step_id": "start",
+      "objective": "prompt",
+      "title": "Text Test Start",
+      "text": "This mission tests text interactions only. No GPS, distance, signal, or location checks are required.\n\nType READY to begin.\nType HINT to test a hint response.",
+      "responses": [
+        {
+          "input": "READY",
+          "goto": "branch_choice"
+        },
+        {
+          "input": "HINT",
+          "hint": "Hints show status text but do not advance unless a goto is configured."
+        }
+      ],
+      "distanceEnabled": false,
+      "signalEnabled": false,
+      "locationEnabled": false
     },
     {
-      "step_id": "arrive_2",
-      "objective": "arrive",
-      "title": "Track the Scent",
-      "text": "Good, we will need you to track down the wolf scent, one of our hunters has placed a transmitter on it. Get within 40 meter of it",
-      "target": {
-        "lat": 1.3433991104675422,
-        "lng": 103.69919964716566,
-        "radiusMeters": 40
-      },
-      "transitions": {
-        "success": "evacuate_1"
-      },
-      "distanceEnabled": true,
-      "signalEnabled": false
+      "step_id": "branch_choice",
+      "objective": "prompt",
+      "title": "Branch Choice Test",
+      "text": "Choose a route to test.\n\nType 1 for the quote verification route.\nType 2 for the simple passcode route.\nType BACK to return to the start.",
+      "responses": [
+        {
+          "input": "1",
+          "goto": "quote_gate"
+        },
+        {
+          "input": "2",
+          "goto": "simple_passcode"
+        },
+        {
+          "input": "BACK",
+          "goto": "start"
+        }
+      ],
+      "distanceEnabled": false,
+      "signalEnabled": false,
+      "locationEnabled": false
     },
     {
-      "step_id": "evacuate_1",
-      "objective": "evacuate",
-      "title": "Break Contact",
-      "text": "....static, you hear a lot of static, is the radio being jammed? Leave the area and get 50 meter away",
-      "target": {
-        "lat": 1.3433991104675422,
-        "lng": 103.69919964716566,
-        "radiusMeters": 100
+      "step_id": "quote_gate",
+      "objective": "prompt",
+      "title": "Multi-Answer Quote Test",
+      "text": "This tests the new multi-answer prompt.\n\nType READY to start quote verification.\nType BACK to return to the branch choice.\n\nVerify any two of these three test quotes:\n\nTHE FIRST SIGNAL IS GREEN\nTHE SECOND MARKER IS SILENT\nTHE THIRD DOOR OPENS NORTH",
+      "multiAnswer": {
+        "required": 2,
+        "back": "branch_choice",
+        "readyMessage": "Quote verification is ready. Submit one quote at a time.",
+        "notReadyMessage": "Type READY before submitting quotes.",
+        "duplicateMessage": "That quote was already verified.",
+        "noMatchMessage": "No quote matched. Check spelling and try again, or type BACK.",
+        "completeMessage": "Enough quotes verified. Advancing to the final confirmation.",
+        "completeGoto": "final_confirmation",
+        "answers": [
+          {
+            "id": "quote_a",
+            "input": "THE FIRST SIGNAL IS GREEN",
+            "message": "Quote A verified."
+          },
+          {
+            "id": "quote_b",
+            "input": "THE SECOND MARKER IS SILENT",
+            "message": "Quote B verified."
+          },
+          {
+            "id": "quote_c",
+            "inputs": [
+              "THE THIRD DOOR OPENS NORTH",
+              "THE THIRD DOOR OPENS TO THE NORTH"
+            ],
+            "message": "Quote C verified."
+          }
+        ]
       },
-      "transitions": {
-        "success": "testing_completed"
-      },
-      "distanceEnabled": true,
-      "signalEnabled": false
+      "distanceEnabled": false,
+      "signalEnabled": false,
+      "locationEnabled": false
     },
     {
-      "step_id": "testing_completed",
+      "step_id": "simple_passcode",
+      "objective": "prompt",
+      "title": "Simple Passcode Test",
+      "text": "This tests a normal single-answer prompt.\n\nType ALPHA to pass.\nType HINT to display a hint.\nType BACK to return to the branch choice.",
+      "responses": [
+        {
+          "input": "ALPHA",
+          "goto": "final_confirmation"
+        },
+        {
+          "input": "HINT",
+          "hint": "The passcode is ALPHA."
+        },
+        {
+          "input": "BACK",
+          "goto": "branch_choice"
+        }
+      ],
+      "distanceEnabled": false,
+      "signalEnabled": false,
+      "locationEnabled": false
+    },
+    {
+      "step_id": "final_confirmation",
+      "objective": "prompt",
+      "title": "Final Confirmation",
+      "text": "Final text interaction check.\n\nType PASS to finish with the success ending.\nType FAIL to finish with the failure ending.\nType BACK to return to the branch choice.",
+      "responses": [
+        {
+          "input": "PASS",
+          "goto": "good_ending"
+        },
+        {
+          "input": "FAIL",
+          "goto": "bad_ending"
+        },
+        {
+          "input": "BACK",
+          "goto": "branch_choice"
+        }
+      ],
+      "distanceEnabled": false,
+      "signalEnabled": false,
+      "locationEnabled": false
+    },
+    {
+      "step_id": "good_ending",
       "objective": "ending",
-      "title": "Testing Completed",
-      "text": "Testing completed successfully.",
+      "title": "Text Test Passed",
+      "text": "The text interaction test reached the success ending.",
+      "distanceEnabled": false,
+      "signalEnabled": false,
+      "locationEnabled": false
+    },
+    {
+      "step_id": "bad_ending",
+      "objective": "ending",
+      "title": "Text Test Failed Path",
+      "text": "The text interaction test reached the failure ending. This confirms failure branches work too.",
       "distanceEnabled": false,
       "signalEnabled": false,
       "locationEnabled": false

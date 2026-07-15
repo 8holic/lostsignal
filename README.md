@@ -492,6 +492,54 @@ You can also nest these inside `action`:
 }
 ```
 
+Prompt steps can also collect multiple valid answers over time with `multiAnswer`.
+Use this when players need any number of long recovered quotes or riddle answers,
+and you want the app to confirm each correct submission separately.
+
+```json
+{
+  "step_id": "quote_check",
+  "objective": "prompt",
+  "title": "Quote Verification",
+  "text": "Type READY to submit recovered quotes.\nType BACK to return and investigate more.\n\nVerify any two quotes.",
+  "multiAnswer": {
+    "required": 2,
+    "back": "route_hub",
+    "completeGoto": "final_riddle",
+    "answers": [
+      {
+        "id": "quote_a",
+        "input": "THE FIRST RECOVERED SENTENCE",
+        "message": "Quote A verified."
+      },
+      {
+        "id": "quote_b",
+        "input": "THE SECOND RECOVERED SENTENCE",
+        "message": "Quote B verified."
+      },
+      {
+        "id": "quote_c",
+        "inputs": [
+          "THE THIRD RECOVERED SENTENCE",
+          "AN ACCEPTED ALTERNATE VERSION"
+        ],
+        "message": "Quote C verified."
+      }
+    ]
+  },
+  "locationEnabled": false
+}
+```
+
+Multi-answer prompt notes:
+
+- `READY` starts answer verification. Set `requireReady` to `false` to allow answers immediately.
+- `BACK` jumps to `back`, `backGoto`, or `cancelGoto` if configured.
+- `required` or `requiredMatches` controls how many answers are needed.
+- `completeGoto`, `goto`, `next`, `stepId`, or `transitions.success` controls where completion goes.
+- Answers accept `input`, `text`, `match`, `inputs`, or `matches`.
+- Matched answer IDs are saved by `step_id`, so progress survives reloads.
+
 ### Search
 
 Use when the player can claim multiple possible target points. The player scans or checks the selected search point until enough points are claimed.
@@ -729,6 +777,7 @@ Browser checks:
 - Signal scan asks for compass permission where required.
 - Location check advances, fails, or stays put as expected.
 - Prompt matching handles casing and extra spaces.
+- Multi-answer prompts persist verified answers and advance at the required count.
 - Search stages persist claimed points after reload.
 - Timed stages transition on timeout.
 - Complications trigger, apply time modifiers, and stop on endings.

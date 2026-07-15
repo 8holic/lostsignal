@@ -26,7 +26,7 @@ function normalizeObjectiveName(value) {
     .toLowerCase();
 }
 
-function normalizeText(value) {
+export function normalizePromptText(value) {
   return String(value || "")
     .trim()
     .toUpperCase()
@@ -134,7 +134,7 @@ export function checkObjective(step, distanceMeters) {
 }
 
 export function resolvePrompt(step, rawInput) {
-  const normalizedInput = normalizeText(rawInput);
+  const normalizedInput = normalizePromptText(rawInput);
   if (!normalizedInput) {
     return {
       matched: false,
@@ -145,7 +145,7 @@ export function resolvePrompt(step, rawInput) {
 
   const responses = Array.isArray(step?.responses) ? step.responses : [];
   for (const response of responses) {
-    const responseInput = normalizeText(response?.input ?? response?.text ?? response?.match);
+    const responseInput = normalizePromptText(response?.input ?? response?.text ?? response?.match);
     if (!responseInput) continue;
     if (responseInput !== normalizedInput) continue;
 

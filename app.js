@@ -2,7 +2,12 @@ import { scanDistance as runDistanceScan } from "./js/distance.js";
 import { scanSignal as runSignalScan } from "./js/signal.js";
 import { calculateDistanceMeters, getAveragedPosition } from "./js/common.js";
 import { createComplicationController } from "./js/complications.js";
-import { evaluateObjective, getStepFlag, resolvePrompt } from "./js/objective.js";
+import {
+  evaluateObjective,
+  getStepFlag,
+  normalizePromptText,
+  resolvePrompt,
+} from "./js/objective.js";
 
 const missionCodeInput = document.getElementById("missionCode");
 const loadMissionBtn = document.getElementById("loadMissionBtn");
@@ -46,6 +51,7 @@ let activeMissionStartedAt = 0;
 let activeMissionEndedAt = 0;
 let activeTimeModifierMs = 0;
 let activeSearchState = {};
+let activePromptState = {};
 
 let distanceScanInProgress = false;
 let signalScanInProgress = false;
@@ -357,6 +363,89 @@ function initializeSearchState(savedSearchState = {}) {
   refreshSearchPointOptions();
 }
 
+function getMultiAnswerConfig(step) {
+  return step?.multiAnswer && typeof step.multiAnswer === "object"
+    ? step.multiAnswer
+    : null;
+}
+
+function isMultiAnswerPrompt(step) {
+  const config = getMultiAnswerConfig(step);
+  return Boolean(config && Array.isArray(config.answers) && config.answers.length);
+}
+
+function getMultiAnswerId(answer, index) {
+  return String(answer?.id ?? answer?.label ?? `answer_${index + 1}`).trim();
+}
+
+function getMultiAnswerStepState(step) {
+  const stepId = String(step?.step_id || "").trim();
+  if (!stepId) return null;
+
+  if (!activePromptState[stepId] || typeof activePromptState[stepId] !== "object") {
+    activePromptState[stepId] = {
+      matchedIds: [],
+      ready: false,
+    };
+  }
+
+  if (!Array.isArray(activePromptState[stepId].matchedIds)) {
+    activePromptState[stepId].matchedIds = [];
+  }
+
+  activePromptState[stepId].ready = Boolean(activePromptState[stepId].ready);
+
+  return activePromptState[stepId];
+}
+
+function getMatchedMultiAnswerIds(step) {
+  const state = getMultiAnswerStepState(step);
+  return new Set((state?.matchedIds || []).map((id) => String(id)));
+}
+
+function getRequiredMultiAnswerCount(step) {
+  const config = getMultiAnswerConfig(step);
+  const answers = Array.isArray(config?.answers) ? config.answers : [];
+  const required = Math.floor(getFiniteNumber(config?.required ?? config?.requiredMatches, answers.length));
+
+  if (!answers.length) return 0;
+  return Math.max(1, Math.min(answers.length, required));
+}
+
+function getMatchedMultiAnswerCount(step) {
+  const matchedIds = getMatchedMultiAnswerIds(step);
+  const answers = getMultiAnswerConfig(step)?.answers || [];
+
+  return answers.filter((answer, index) => {
+    return matchedIds.has(getMultiAnswerId(answer, index));
+  }).length;
+}
+
+function isMultiAnswerComplete(step) {
+  return getMatchedMultiAnswerCount(step) >= getRequiredMultiAnswerCount(step);
+}
+
+function initializePromptState(savedPromptState = {}) {
+  activePromptState = {};
+
+  for (const step of activeMission?.steps || []) {
+    if (!isMultiAnswerPrompt(step)) continue;
+
+    const state = getMultiAnswerStepState(step);
+    const savedState = savedPromptState?.[step.step_id];
+    const validIds = new Set(
+      getMultiAnswerConfig(step).answers.map((answer, index) => {
+        return getMultiAnswerId(answer, index);
+      })
+    );
+
+    state.matchedIds = Array.isArray(savedState?.matchedIds)
+      ? savedState.matchedIds.map((id) => String(id)).filter((id) => validIds.has(id))
+      : [];
+    state.ready = Boolean(savedState?.ready);
+  }
+}
+
 async function sha256(text) {
   const bytes = new TextEncoder().encode(text);
   const hashBuffer = await crypto.subtle.digest("SHA-256", bytes);
@@ -441,6 +530,7 @@ function saveActiveMissionState() {
       timeModifierMs: activeTimeModifierMs,
       complicationState: complications.getState(),
       searchState: activeSearchState,
+      promptState: activePromptState,
     })
   );
 }
@@ -594,7 +684,13 @@ function refreshHudButtons() {
 
   if (scanSignalBtn) {
     scanSignalBtn.disabled = !signalEnabled || signalScanInProgress;
-    scanSignalBtn.textContent = signalScanInProgress ? "SCANNING..." : "SCAN SIGNAL";
+    scanSignalBtn.textContent = signalScanInProgress ? "SCANNING..." : "SCAN BEARINGS";
+  }
+
+  // Hide the entire signal row when signals are disabled (same pattern as complication row)
+  const signalRowEl = document.getElementById("signalRow");
+  if (signalRowEl) {
+    signalRowEl.classList.toggle("hidden", !signalEnabled);
   }
 
   if (checkLocationBtn) {
@@ -654,8 +750,11 @@ function renderMission() {
     const searchText = isSearchStep(step)
       ? `\n\nCLAIMED: ${getClaimedSearchCount(step)} / ${getRequiredSearchClaims(step)}`
       : "";
+    const promptText = isMultiAnswerPrompt(step)
+      ? `\n\nVERIFIED: ${getMatchedMultiAnswerCount(step)} / ${getRequiredMultiAnswerCount(step)}`
+      : "";
     const timeText = ending ? `\n\n${getMissionTimeSummaryText()}` : "";
-    missionTextEl.textContent = `${stepTitle}\n\n${stepText}${searchText}${timeText}`;
+    missionTextEl.textContent = `${stepTitle}\n\n${stepText}${searchText}${promptText}${timeText}`;
   } else {
     missionTextEl.textContent = "No active mission step.";
   }
@@ -727,6 +826,7 @@ function bootMission(mission, stepIndex = 0) {
   activeTimeModifierMs = 0;
   complications.initialize();
   initializeSearchState();
+  initializePromptState();
   resetHudReadings();
   if (promptInputEl) promptInputEl.value = "";
   renderMission();
@@ -775,6 +875,7 @@ function resumeMission() {
   activeTimeModifierMs = getFiniteNumber(saved.timeModifierMs);
   complications.initialize(saved.complicationState);
   initializeSearchState(saved.searchState);
+  initializePromptState(saved.promptState);
 
   renderMission();
   renderIdleHud();
@@ -839,6 +940,163 @@ function handleTimedObjectiveExpired() {
   } else {
     setStatus("Time ran out.", "error", "game");
   }
+}
+
+function getMultiAnswerInputList(answer) {
+  const values = [];
+
+  for (const key of ["input", "text", "match"]) {
+    if (typeof answer?.[key] !== "undefined") {
+      values.push(answer[key]);
+    }
+  }
+
+  for (const key of ["inputs", "matches"]) {
+    if (Array.isArray(answer?.[key])) {
+      values.push(...answer[key]);
+    }
+  }
+
+  return values
+    .map((value) => normalizePromptText(value))
+    .filter(Boolean);
+}
+
+function findMultiAnswerMatch(step, normalizedInput) {
+  const answers = getMultiAnswerConfig(step)?.answers || [];
+
+  for (const [index, answer] of answers.entries()) {
+    if (!getMultiAnswerInputList(answer).includes(normalizedInput)) continue;
+
+    return {
+      answer,
+      id: getMultiAnswerId(answer, index),
+      index,
+    };
+  }
+
+  return null;
+}
+
+function getMultiAnswerTarget(step, keys) {
+  const config = getMultiAnswerConfig(step);
+
+  for (const key of keys) {
+    const value = config?.[key];
+    if (typeof value !== "undefined" && value !== null && String(value).trim()) {
+      return String(value).trim();
+    }
+  }
+
+  return null;
+}
+
+function handleMultiAnswerPrompt(step, rawInput) {
+  const config = getMultiAnswerConfig(step);
+  const state = getMultiAnswerStepState(step);
+  const normalizedInput = normalizePromptText(rawInput);
+  const readyInput = normalizePromptText(config?.readyInput ?? "READY");
+  const backInput = normalizePromptText(config?.backInput ?? "BACK");
+  const requireReady = config?.requireReady !== false;
+
+  if (!config || !state || !normalizedInput) return false;
+
+  if (normalizedInput === readyInput) {
+    state.ready = true;
+    saveActiveMissionState();
+    setStatus(
+      config.readyMessage ||
+        `Ready. Submit one answer at a time. ${getMatchedMultiAnswerCount(step)} / ${getRequiredMultiAnswerCount(step)} verified.`,
+      "normal",
+      "game"
+    );
+    if (promptInputEl) promptInputEl.value = "";
+    return true;
+  }
+
+  if (normalizedInput === backInput) {
+    const backTarget = getMultiAnswerTarget(step, ["back", "backGoto", "cancelGoto"]);
+    saveActiveMissionState();
+    if (promptInputEl) promptInputEl.value = "";
+
+    if (backTarget) {
+      setStatus(config.backMessage || "Returning to previous route.", "normal", "game");
+      window.setTimeout(() => {
+        jumpMission(backTarget, "multi-answer-back");
+      }, 300);
+    } else {
+      setStatus(config.noBackMessage || "No return route is configured.", "error", "game");
+    }
+
+    return true;
+  }
+
+  if (requireReady && !state.ready) {
+    setStatus(
+      config.notReadyMessage || `Type ${config?.readyInput ?? "READY"} to begin answer verification.`,
+      "normal",
+      "game"
+    );
+    if (promptInputEl) promptInputEl.focus();
+    return true;
+  }
+
+  const match = findMultiAnswerMatch(step, normalizedInput);
+  if (!match) {
+    setStatus(config.noMatchMessage || "No answer matched.", "error", "game");
+    if (promptInputEl) promptInputEl.focus();
+    return true;
+  }
+
+  if (state.matchedIds.includes(match.id)) {
+    setStatus(
+      match.answer.duplicateMessage ||
+        config.duplicateMessage ||
+        `Already verified. ${getMatchedMultiAnswerCount(step)} / ${getRequiredMultiAnswerCount(step)} complete.`,
+      "normal",
+      "game"
+    );
+    if (promptInputEl) promptInputEl.value = "";
+    return true;
+  }
+
+  state.matchedIds.push(match.id);
+  saveActiveMissionState();
+  renderMission();
+  if (promptInputEl) promptInputEl.value = "";
+
+  const matched = getMatchedMultiAnswerCount(step);
+  const required = getRequiredMultiAnswerCount(step);
+
+  if (matched >= required) {
+    const completeTarget =
+      getMultiAnswerTarget(step, ["completeGoto", "goto", "next", "stepId"]) ||
+      getSuccessTarget(step);
+    setStatus(
+      config.completeMessage || `Answer verified. ${matched} / ${required} complete.`,
+      "normal",
+      "game"
+    );
+
+    if (completeTarget) {
+      window.setTimeout(() => {
+        jumpMission(completeTarget, "multi-answer-complete");
+      }, 700);
+    }
+
+    return true;
+  }
+
+  setStatus(
+    match.answer.message ||
+      match.answer.hint ||
+      config.matchMessage ||
+      `Answer verified. ${matched} / ${required} complete.`,
+    "normal",
+    "game"
+  );
+
+  return true;
 }
 
 async function scanDistance() {
@@ -1233,6 +1491,11 @@ async function submitPrompt() {
   setStatus("Checking response...", "normal", "game");
 
   try {
+    if (isMultiAnswerPrompt(step)) {
+      handleMultiAnswerPrompt(step, rawInput);
+      return;
+    }
+
     const result = resolvePrompt(step, rawInput);
 
     if (!currentStep() || currentStep()?.step_id !== step.step_id) {
@@ -1268,6 +1531,7 @@ function handleResetToAccess() {
   activeTimeModifierMs = 0;
   complications.reset();
   activeSearchState = {};
+  activePromptState = {};
   distanceScanInProgress = false;
   signalScanInProgress = false;
   locationCheckInProgress = false;

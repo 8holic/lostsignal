@@ -11,6 +11,18 @@
       "title": "Joint Camp Precision Training",
       "location": "Base Camp Training Area",
       "file": "mission-jcp.json"
+    },
+    {
+      "code": "TEST",
+      "title": "Text Interaction Test Mission",
+      "location": "No GPS Required",
+      "file": "mission-test.json"
+    },
+    {
+      "code": "EXPLOREOFRONTIER",
+      "title": "Explore of Frontier",
+      "location": "The Frontier CC Area",
+      "file": "mission-explore-frontier.json"
     }
   ]
 }

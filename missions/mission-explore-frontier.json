@@ -1,0 +1,518 @@
+{
+  "code": "EXPLOREOFRONTIER",
+  "title": "Explore of Frontier",
+  "location": "The Frontier CC Area",
+  "intro": "Explore the Frontier route, complete one path, and return to the final destination.",
+  "complications": [],
+  "steps": [
+    {
+      "step_id": "arrive_frontier_cc",
+      "objective": "arrive",
+      "title": "Arrive at The Frontier CC",
+      "text": "Move to The Frontier CC and confirm your position.",
+      "target": {
+        "lat": 1.340250917743343,
+        "lng": 103.7044289723243,
+        "radiusMeters": 60
+      },
+      "transitions": {
+        "success": "evacuate_frontier_cc"
+      },
+      "distanceEnabled": true,
+      "signalEnabled": false,
+      "locationEnabled": true
+    },
+    {
+      "step_id": "evacuate_frontier_cc",
+      "objective": "evacuate",
+      "title": "Evacuate The Frontier CC",
+      "text": "Move at least 500 meters away from The Frontier CC.",
+      "target": {
+        "lat": 1.340250917743343,
+        "lng": 103.7044289723243,
+        "radiusMeters": 200
+      },
+      "transitions": {
+        "success": "earlysearch"
+      },
+      "distanceEnabled": true,
+      "signalEnabled": false,
+      "locationEnabled": true
+    },
+    {
+      "step_id": "earlysearch",
+      "objective": "search",
+      "title": "Recover UFO Signal",
+      "text": "We need you to retrieve the UFO signal, 3/5 will be sufficient.",
+      "requiredClaims": 3,
+      "searchPoints": [
+        {
+          "id": "M1",
+          "label": "Signal near 692",
+          "lat": 1.342764101527408, 
+          "lng": 103.70686003435858,
+          "radiusMeters": 60
+        },
+        {
+          "id": "M2",
+          "label": "Signal near trees",
+          "lat": 1.340055774298487, 
+          "lng": 103.70205874700592,
+          "radiusMeters": 60
+        },
+        {
+          "id": "M3",
+          "label": "Signals near JCP",
+          "lat": 1.339042759184277, 
+          "lng": 103.70822009587006,
+          "radiusMeters": 60
+        },
+        {
+          "id": "M4",
+          "label": "Signal near 697",
+          "lat": 1.3407785626668811, 
+          "lng": 103.70797704243475,
+          "radiusMeters": 60
+        },
+        {
+          "id": "M5",
+          "label": "Signal Near Jurong Point",
+          "lat": 1.3405520530320345, 
+          "lng": 103.70636873661846,
+          "radiusMeters": 60
+        }
+      ],
+      "transitions": {
+        "success": "midpointreturn"
+      },
+      "distanceEnabled": true,
+      "signalEnabled": true,
+      "locationEnabled": true
+    },
+    {
+      "step_id": "midpointreturn",
+      "objective": "arrive",
+      "title": "Arrive at The Frontier CC",
+      "text": "Move to The Frontier CC and confirm your position.",
+      "target": {
+        "lat": 1.340250917743343,
+        "lng": 103.7044289723243,
+        "radiusMeters": 100
+      },
+      "transitions": {
+        "success": "midway"
+      },
+      "distanceEnabled": true,
+      "signalEnabled": false,
+      "locationEnabled": true
+    },
+    {
+      "step_id": "midway",
+      "objective": "prompt",
+      "title": "Read the Trail Sign",
+      "text": "Type the words written on the signboard.",
+      "responses": [
+        {
+          "input": "BRYAN",
+          "goto": "route_hub"
+        }
+      ],
+      "distanceEnabled": true,
+      "signalEnabled": false,
+      "locationEnabled": false
+    },
+    {
+      "step_id": "route_hub",
+      "objective": "prompt",
+      "title": "Route Hub",
+      "text": "Choose a path.\n\nType 1 for Path 1.\nType 2 for Path 2.\nType 3 for Path 3.\nType ANSWER to proceed to the answer step.",
+      "responses": [
+        {
+          "input": "1",
+          "goto": "path_1_checkpoint_1"
+        },
+        {
+          "input": "PATH 1",
+          "goto": "path_1_checkpoint_1"
+        },
+        {
+          "input": "2",
+          "goto": "path_2_checkpoint_1"
+        },
+        {
+          "input": "PATH 2",
+          "goto": "path_2_checkpoint_1"
+        },
+        {
+          "input": "3",
+          "goto": "path_3_checkpoint_1"
+        },
+        {
+          "input": "PATH 3",
+          "goto": "path_3_checkpoint_1"
+        },
+        {
+          "input": "ANSWER",
+          "goto": "answer_gate"
+        },
+        {
+          "input": "NEXT",
+          "goto": "answer_gate"
+        }
+      ],
+      "distanceEnabled": false,
+      "signalEnabled": false,
+      "locationEnabled": false
+    },
+    {
+      "step_id": "path_1_checkpoint_1",
+      "objective": "arrive",
+      "title": "Path 1: Abandoned Primary School",
+      "text": "Move to the Abandoned Primary School checkpoint.",
+      "target": {
+        "lat": 1.3395812648178456,
+        "lng": 103.68807319004733,
+        "radiusMeters": 60
+      },
+      "transitions": {
+        "success": "path_1_question_1"
+      },
+      "distanceEnabled": true,
+      "signalEnabled": false,
+      "locationEnabled": true
+    },
+    {
+      "step_id": "path_1_question_1",
+      "objective": "prompt",
+      "title": "Path 1 Question 1",
+      "text": "Question 1\n\nEnter the answer for this checkpoint.",
+      "responses": [
+        {
+          "input": "A1",
+          "goto": "path_1_checkpoint_2"
+        }
+      ],
+      "distanceEnabled": false,
+      "signalEnabled": false,
+      "locationEnabled": false
+    },
+    {
+      "step_id": "path_1_checkpoint_2",
+      "objective": "arrive",
+      "title": "Path 1 Checkpoint 2",
+      "text": "Move to Path 1 Checkpoint 2.",
+      "target": {
+        "lat": 1.3374279103308393,
+        "lng": 103.69323846790782,
+        "radiusMeters": 60
+      },
+      "transitions": {
+        "success": "path_1_question_2"
+      },
+      "distanceEnabled": true,
+      "signalEnabled": false,
+      "locationEnabled": true
+    },
+    {
+      "step_id": "path_1_question_2",
+      "objective": "prompt",
+      "title": "Path 1 Question 2",
+      "text": "Question 2\n\nEnter the answer for this checkpoint.",
+      "responses": [
+        {
+          "input": "A2",
+          "goto": "path_1_checkpoint_3"
+        }
+      ],
+      "distanceEnabled": false,
+      "signalEnabled": false,
+      "locationEnabled": false
+    },
+    {
+      "step_id": "path_1_checkpoint_3",
+      "objective": "arrive",
+      "title": "Path 1 Checkpoint 3",
+      "text": "Move to Path 1 Checkpoint 3.",
+      "target": {
+        "lat": 1.3419399794640412,
+        "lng": 103.6929121484165,
+        "radiusMeters": 60
+      },
+      "transitions": {
+        "success": "path_1_question_3"
+      },
+      "distanceEnabled": true,
+      "signalEnabled": false,
+      "locationEnabled": true
+    },
+    {
+      "step_id": "path_1_question_3",
+      "objective": "prompt",
+      "title": "Path 1 Question 3",
+      "text": "Question 3\n\nEnter the answer for this checkpoint.",
+      "responses": [
+        {
+          "input": "A3",
+          "goto": "answer_gate"
+        }
+      ],
+      "distanceEnabled": false,
+      "signalEnabled": false,
+      "locationEnabled": false
+    },
+    {
+      "step_id": "path_2_checkpoint_1",
+      "objective": "arrive",
+      "title": "Path 2: Park near the CC",
+      "text": "Move to the park near the CC.",
+      "target": {
+        "lat": 1.3428291616665982,
+        "lng": 103.70449972903337,
+        "radiusMeters": 60
+      },
+      "transitions": {
+        "success": "path_2_question_1"
+      },
+      "distanceEnabled": true,
+      "signalEnabled": false,
+      "locationEnabled": true
+    },
+    {
+      "step_id": "path_2_question_1",
+      "objective": "prompt",
+      "title": "Path 2 Question 1",
+      "text": "Question 1\n\nEnter the answer for this checkpoint.",
+      "responses": [
+        {
+          "input": "A1",
+          "goto": "path_2_checkpoint_2"
+        }
+      ],
+      "distanceEnabled": false,
+      "signalEnabled": false,
+      "locationEnabled": false
+    },
+    {
+      "step_id": "path_2_checkpoint_2",
+      "objective": "arrive",
+      "title": "Path 2: Former Jurong Fire Station Tower",
+      "text": "Move to the Former Jurong Fire Station Tower checkpoint.",
+      "target": {
+        "lat": 1.342049726506782,
+        "lng": 103.71071948223803,
+        "radiusMeters": 60
+      },
+      "transitions": {
+        "success": "path_2_question_2"
+      },
+      "distanceEnabled": true,
+      "signalEnabled": false,
+      "locationEnabled": true
+    },
+    {
+      "step_id": "path_2_question_2",
+      "objective": "prompt",
+      "title": "Path 2 Question 2",
+      "text": "Question 2\n\nEnter the answer for this checkpoint.",
+      "responses": [
+        {
+          "input": "A2",
+          "goto": "path_2_checkpoint_3"
+        }
+      ],
+      "distanceEnabled": false,
+      "signalEnabled": false,
+      "locationEnabled": false
+    },
+    {
+      "step_id": "path_2_checkpoint_3",
+      "objective": "arrive",
+      "title": "Path 2: Jurong Central Garden Pond",
+      "text": "Move to the Jurong Central Garden Pond checkpoint.",
+      "target": {
+        "lat": 1.3366445754641632,
+        "lng": 103.70752189182785,
+        "radiusMeters": 60
+      },
+      "transitions": {
+        "success": "path_2_question_3"
+      },
+      "distanceEnabled": true,
+      "signalEnabled": false,
+      "locationEnabled": true
+    },
+    {
+      "step_id": "path_2_question_3",
+      "objective": "prompt",
+      "title": "Path 2 Question 3",
+      "text": "Question 3\n\nEnter the answer for this checkpoint.",
+      "responses": [
+        {
+          "input": "A3",
+          "goto": "answer_gate"
+        }
+      ],
+      "distanceEnabled": false,
+      "signalEnabled": false,
+      "locationEnabled": false
+    },
+    {
+      "step_id": "path_3_checkpoint_1",
+      "objective": "arrive",
+      "title": "Path 3: Near 662B",
+      "text": "Move to the checkpoint near 662B.",
+      "target": {
+        "lat": 1.3370331432557236,
+        "lng": 103.70360257324394,
+        "radiusMeters": 60
+      },
+      "transitions": {
+        "success": "path_3_question_1"
+      },
+      "distanceEnabled": true,
+      "signalEnabled": false,
+      "locationEnabled": true
+    },
+    {
+      "step_id": "path_3_question_1",
+      "objective": "prompt",
+      "title": "Path 3 Question 1",
+      "text": "Question 1\n\nEnter the answer for this checkpoint.",
+      "responses": [
+        {
+          "input": "A1",
+          "goto": "path_3_checkpoint_2"
+        }
+      ],
+      "distanceEnabled": false,
+      "signalEnabled": false,
+      "locationEnabled": false
+    },
+    {
+      "step_id": "path_3_checkpoint_2",
+      "objective": "arrive",
+      "title": "Path 3: End of Jurong River",
+      "text": "Move to the End of Jurong River checkpoint.",
+      "target": {
+        "lat": 1.3346945944495423,
+        "lng": 103.69694757389715,
+        "radiusMeters": 60
+      },
+      "transitions": {
+        "success": "path_3_question_2"
+      },
+      "distanceEnabled": true,
+      "signalEnabled": false,
+      "locationEnabled": true
+    },
+    {
+      "step_id": "path_3_question_2",
+      "objective": "prompt",
+      "title": "Path 3 Question 2",
+      "text": "Question 2\n\nEnter the answer for this checkpoint.",
+      "responses": [
+        {
+          "input": "A2",
+          "goto": "path_3_checkpoint_3"
+        }
+      ],
+      "distanceEnabled": false,
+      "signalEnabled": false,
+      "locationEnabled": false
+    },
+    {
+      "step_id": "path_3_checkpoint_3",
+      "objective": "arrive",
+      "title": "Path 3: Playground near Pioneer MRT",
+      "text": "Move to the Playground near Pioneer MRT checkpoint.",
+      "target": {
+        "lat": 1.3383693115814306,
+        "lng": 103.69709656928869,
+        "radiusMeters": 60
+      },
+      "transitions": {
+        "success": "path_3_question_3"
+      },
+      "distanceEnabled": true,
+      "signalEnabled": false,
+      "locationEnabled": true
+    },
+    {
+      "step_id": "path_3_question_3",
+      "objective": "prompt",
+      "title": "Path 3 Question 3",
+      "text": "Question 3\n\nEnter the answer for this checkpoint.",
+      "responses": [
+        {
+          "input": "A2",
+          "goto": "answer_gate"
+        }
+      ],
+      "distanceEnabled": false,
+      "signalEnabled": false,
+      "locationEnabled": false
+    },
+    {
+      "step_id": "answer_gate",
+      "objective": "prompt",
+      "title": "Answer",
+      "text": "Type BACK to return to the hub.\n\nOtherwise, enter any two of these three quotes:\n\nPLACEHOLDER1\nPLACEHOLDER2\nPLACEHOLDER3",
+      "multiAnswer": {
+        "required": 2,
+        "requireReady": false,
+        "back": "route_hub",
+        "backMessage": "Returning to the route hub.",
+        "duplicateMessage": "That quote was already verified.",
+        "noMatchMessage": "No quote matched. Check the placeholder text and try again, or type BACK.",
+        "completeMessage": "Two quotes verified. Proceed to the final destination.",
+        "completeGoto": "final_frontier_cc",
+        "answers": [
+          {
+            "id": "placeholder_1",
+            "input": "PLACEHOLDER1",
+            "message": "PLACEHOLDER1 verified."
+          },
+          {
+            "id": "placeholder_2",
+            "input": "PLACEHOLDER2",
+            "message": "PLACEHOLDER2 verified."
+          },
+          {
+            "id": "placeholder_3",
+            "input": "PLACEHOLDER3",
+            "message": "PLACEHOLDER3 verified."
+          }
+        ]
+      },
+      "distanceEnabled": false,
+      "signalEnabled": false,
+      "locationEnabled": false
+    },
+    {
+      "step_id": "final_frontier_cc",
+      "objective": "arrive",
+      "title": "Final Destination: The Frontier CC",
+      "text": "Return to The Frontier CC and confirm your final position.",
+      "target": {
+        "lat": 1.340250917743343,
+        "lng": 103.7044289723243,
+        "radiusMeters": 60
+      },
+      "transitions": {
+        "success": "good_ending"
+      },
+      "distanceEnabled": true,
+      "signalEnabled": false,
+      "locationEnabled": true
+    },
+    {
+      "step_id": "good_ending",
+      "objective": "ending",
+      "title": "Explore of Frontier Complete",
+      "text": "Mission complete. The final destination has been confirmed.",
+      "distanceEnabled": false,
+      "signalEnabled": false,
+      "locationEnabled": false
+    }
+  ]
+}
